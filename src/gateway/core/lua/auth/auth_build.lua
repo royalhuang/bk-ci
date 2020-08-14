@@ -131,7 +131,7 @@ if build_type == "AGENT" then
                 end
 
                 local uid = ""
-                if obj.userId != nil then
+                if obj.userId ~= nil then
                     uid = obj.userId
                 end
 
@@ -246,7 +246,7 @@ elseif build_type == "DOCKER" then
                 end
 
                 local uid = ""
-                if obj.userId != nil then
+                if obj.userId ~= nil then
                     uid = obj.userId
                 end
 
@@ -361,7 +361,7 @@ elseif build_type == "PLUGIN_AGENT" then
                 end
 
                 local uid = ""
-                if obj.userId != nil then
+                if obj.userId ~= nil then
                     uid = obj.userId
                 end
 
@@ -453,7 +453,7 @@ elseif build_type == "MACOS" then
                 end
 
                 local uid = ""
-                if obj.userId != nil then
+                if obj.userId ~= nil then
                     uid = obj.userId
                 end
 
@@ -550,7 +550,7 @@ else
                 end
 
                 local uid = ""
-                if obj.userId != nil then
+                if obj.userId ~= nil then
                     uid = obj.userId
                 end
 
