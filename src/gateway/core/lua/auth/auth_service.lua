@@ -39,12 +39,20 @@ if not isInServiceWhitelist then
   ngx.exit(403)
 end 
 local userId = ""
-if ngx.var.http_x_soda_uid ~= nil and ngx.var.http_x_soda_uid ~= "" then
+
+
+if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and userId == "" then
+  userId = ngx.var.http_x_devops_uid
+end
+
+if ngx.var.http_x_bkrepo_uid ~= nil and ngx.var.http_x_bkrepo_uid ~= "" and userId == "" then
+  userId = ngx.var.bkrepo
+end
+
+if ngx.var.http_x_soda_uid ~= nil and ngx.var.http_x_soda_uid ~= "" and userId == "" then
   userId = ngx.var.http_x_soda_uid
 end
 
-if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" then
-  userId = ngx.var.http_x_devops_uid
-end
+
 ngx.header["x-devops-uid"] = userId
 ngx.exit(200)
