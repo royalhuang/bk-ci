@@ -46,7 +46,7 @@ if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and user
 end
 
 if ngx.var.http_x_bkrepo_uid ~= nil and ngx.var.http_x_bkrepo_uid ~= "" and userId == "" then
-  userId = ngx.var.bkrepo
+  userId = ngx.var.http_x_bkrepo_uid
 end
 
 if ngx.var.http_x_soda_uid ~= nil and ngx.var.http_x_soda_uid ~= "" and userId == "" then
