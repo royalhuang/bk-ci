@@ -26,9 +26,10 @@
 
 package com.tencent.devops.process.service
 
+import com.tencent.devops.artifactory.api.service.ShortUrlResource
+import com.tencent.devops.artifactory.pojo.CreateShortUrlRequest
 import com.tencent.devops.common.api.util.DateTimeUtil
 import com.tencent.devops.common.api.util.EnvUtils
-import com.tencent.devops.common.archive.shorturl.ShortUrlApi
 import com.tencent.devops.common.auth.api.BSAuthProjectApi
 import com.tencent.devops.common.auth.code.BSPipelineAuthServiceCode
 import com.tencent.devops.common.client.Client
@@ -64,6 +65,14 @@ import com.tencent.devops.process.util.NotifyTemplateUtils
 import com.tencent.devops.process.util.ServiceHomeUrlUtils.server
 import com.tencent.devops.process.utils.PIPELINE_BUILD_NUM
 import com.tencent.devops.process.utils.PIPELINE_NAME
+import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_CANCEL_NOTIFY_TEMPLATE
+import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_CANCEL_NOTIFY_TEMPLATE_DETAIL
+import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_FAILURE_NOTIFY_TEMPLATE
+import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_FAILURE_NOTIFY_TEMPLATE_DETAIL
+import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_SUCCESS_NOTIFY_TEMPLATE
+import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_SUCCESS_NOTIFY_TEMPLATE_DETAIL
+import com.tencent.devops.process.utils.PIPELINE_STARTUP_NOTIFY_TEMPLATE
+import com.tencent.devops.process.utils.PIPELINE_STARTUP_NOTIFY_TEMPLATE_DETAIL
 import com.tencent.devops.process.utils.PIPELINE_START_CHANNEL
 import com.tencent.devops.process.utils.PIPELINE_START_MOBILE
 import com.tencent.devops.process.utils.PIPELINE_START_PARENT_BUILD_ID
@@ -75,14 +84,6 @@ import com.tencent.devops.process.utils.PIPELINE_START_WEBHOOK_USER_ID
 import com.tencent.devops.process.utils.PIPELINE_TIME_DURATION
 import com.tencent.devops.process.utils.PIPELINE_TIME_END
 import com.tencent.devops.process.utils.PIPELINE_VERSION
-import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_SUCCESS_NOTIFY_TEMPLATE
-import com.tencent.devops.process.utils.PIPELINE_STARTUP_NOTIFY_TEMPLATE
-import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_FAILURE_NOTIFY_TEMPLATE
-import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_CANCEL_NOTIFY_TEMPLATE
-import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_CANCEL_NOTIFY_TEMPLATE_DETAIL
-import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_FAILURE_NOTIFY_TEMPLATE_DETAIL
-import com.tencent.devops.process.utils.PIPELINE_SHUTDOWN_SUCCESS_NOTIFY_TEMPLATE_DETAIL
-import com.tencent.devops.process.utils.PIPELINE_STARTUP_NOTIFY_TEMPLATE_DETAIL
 import com.tencent.devops.process.utils.PipelineVarUtil
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
@@ -110,7 +111,6 @@ class PipelineSubscriptionService @Autowired(required = false) constructor(
     private val measureService: MeasureService?,
     private val bsAuthProjectApi: BSAuthProjectApi,
     private val bsPipelineAuthServiceCode: BSPipelineAuthServiceCode,
-    private val shortUrlApi: ShortUrlApi,
     private val client: Client
 ) {
 
@@ -129,8 +129,8 @@ class PipelineSubscriptionService @Autowired(required = false) constructor(
                 // Add the subscription
                 pipelineSubscriptionDao.insert(
                     dslContext = context, pipelineId = pipelineId, username = userId, subscriptionTypes = listOf(
-                        PipelineSubscriptionType.EMAIL, PipelineSubscriptionType.RTX
-                    ), type = type ?: SubscriptionType.ALL
+                    PipelineSubscriptionType.EMAIL, PipelineSubscriptionType.RTX
+                ), type = type ?: SubscriptionType.ALL
                 )
             } else {
                 pipelineSubscriptionDao.update(
@@ -253,7 +253,7 @@ class PipelineSubscriptionService @Autowired(required = false) constructor(
             val projectGroup = bsAuthProjectApi.getProjectGroupAndUserList(bsPipelineAuthServiceCode, projectId)
             val detailUrl = detailUrl(projectId, pipelineId, buildId)
             val detailOuterUrl = detailOuterUrl(projectId, pipelineId, buildId)
-            val detailShortOuterUrl = shortUrlApi.getShortUrl(detailOuterUrl, 24 * 3600 * 180)
+            val detailShortOuterUrl = client.get(ShortUrlResource::class).createShortUrl(CreateShortUrlRequest(detailOuterUrl, 24 * 3600 * 180)).data!!
             val projectName = projectOauthTokenService.getProjectName(projectId) ?: ""
 
             val mapData = mapOf(
