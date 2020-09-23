@@ -216,12 +216,13 @@ class ScmService @Autowired constructor(
         token: String?,
         region: CodeSvnRegion?,
         userName: String,
-        event: String? = null
+        event: String? = null,
+        hookUrl: String? = null
     ) {
         logger.info("[$projectName|$url|$type|$token|$region|$userName|$event] Start to add web hook")
         val startEpoch = System.currentTimeMillis()
         try {
-            val hookUrl = when (type) {
+            val hookUrl = hookUrl ?: when (type) {
                 ScmType.CODE_GIT -> {
                     if (gitConfig.gitHookUrl.isBlank()) {
                         logger.warn("The git webhook url is not settle")
