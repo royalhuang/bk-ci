@@ -405,7 +405,6 @@ open class CodeccUtils {
                 buildId = codeccExecuteConfig.buildTask.buildId,
                 script = script,
                 dir = codeccExecuteConfig.workspace,
-                workspace = codeccExecuteConfig.workspace,
                 buildEnvs = codeccExecuteConfig.buildVariables.buildEnvs,
                 runtimeVariables = codeccExecuteConfig.buildVariables.variables
             )
@@ -424,7 +423,6 @@ open class CodeccUtils {
                 buildId = codeccExecuteConfig.buildTask.buildId,
                 script = list.joinToString(" "),
                 dir = codeccExecuteConfig.workspace,
-                workspace = codeccExecuteConfig.workspace,
                 runtimeVariables = variables,
                 prefix = prefix)
         } else {
@@ -432,7 +430,6 @@ open class CodeccUtils {
                 buildId = codeccExecuteConfig.buildTask.buildId,
                 script = list.joinToString(" "),
                 dir = codeccExecuteConfig.workspace,
-                workspace = codeccExecuteConfig.workspace,
                 buildEnvs = takeBuildEnvs(codeccExecuteConfig),
                 runtimeVariables = variables,
                 prefix = prefix
