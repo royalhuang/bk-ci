@@ -51,6 +51,7 @@ class CommandBatImpl() :
             script = realCommand,
             runtimeVariables = runtimeVariables,
             dir = dir,
+            workspace = dir,
             errorMessage = errorMessage
         )
     }

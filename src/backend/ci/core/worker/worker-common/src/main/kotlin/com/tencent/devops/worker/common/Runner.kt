@@ -208,6 +208,7 @@ object Runner {
                         buildId = "",
                         script = "find ${file.absolutePath} -type l | xargs rm -rf;",
                         dir = file,
+                        workspace = file,
                         buildEnvs = emptyList(),
                         runtimeVariables = emptyMap()
                     )

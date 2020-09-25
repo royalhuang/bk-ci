@@ -49,6 +49,7 @@ class CommandShellImpl() : ICommand {
             buildId = buildId,
             script = realCommand,
             dir = dir,
+            workspace = dir,
             buildEnvs = buildEnvs,
             runtimeVariables = runtimeVariables,
             continueNoneZero = continueNoneZero,
