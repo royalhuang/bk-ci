@@ -219,10 +219,10 @@ class ScmService @Autowired constructor(
         event: String? = null,
         hookUrl: String? = null
     ) {
-        logger.info("[$projectName|$url|$type|$token|$region|$userName|$event] Start to add web hook")
+        logger.info("[$projectName|$url|$type|$token|$region|$userName|$event|$hookUrl] Start to add web hook")
         val startEpoch = System.currentTimeMillis()
         try {
-            val hookUrl = hookUrl ?: when (type) {
+            val realHookUrl = hookUrl ?: when (type) {
                 ScmType.CODE_GIT -> {
                     if (gitConfig.gitHookUrl.isBlank()) {
                         logger.warn("The git webhook url is not settle")
@@ -257,7 +257,7 @@ class ScmService @Autowired constructor(
                 }
             }
             ScmFactory.getScm(projectName, url, type, null, privateKey, passPhrase, token, region, userName, event)
-                .addWebHook(hookUrl)
+                .addWebHook(realHookUrl)
         } finally {
             logger.info("It took ${System.currentTimeMillis() - startEpoch}ms to add web hook")
         }
