@@ -18,15 +18,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ]]
 
 config = {
-  env = "__BKCI_ENV__",
-  static_dir = "__INSTALL_PATH__/__MODULE__/frontend",
-  static_dir_gray = "__INSTALL_PATH__/__MODULE__/frontend-gray",
-  docs_dir = "__INSTALL_PATH__/__MODULE__/docs",
-  static_dir_codecc = "__INSTALL_PATH__/codecc/frontend",
-  http_schema = "__HTTP_SCHEMA__", -- 蓝鲸PaaS平台访问协议 http or https, 如果有对接才配置修改，开源默认没对接
-  paas_host = "__PAAS_FQDN__", -- 蓝鲸PaaS平台域名, 如果有对接才配置修改，开源默认没对接
-  paas_http_port = "__PAAS_HTTPS_PORT__", -- 蓝鲸PaaS平台域名的端口, 如果有对接才配置修改，开源默认没对接
-  login_url = "__PAAS_LOGIN_URL__",   -- 蓝鲸PaaS平台域名, 如果有对接才配置修改，开源默认没对接
+  env = "__BK_CI_ENV__",
+  static_dir = "__BK_CI_HOME__/frontend",
+  static_dir_gray = "__BK_CI_HOME__/frontend-gray",
+  docs_dir = "__BK_CI_HOME__/docs",
+  static_dir_codecc = "__BK_CODECC_HOME__/frontend",
+  http_schema = "__BK_HTTP_SCHEMA__", -- 蓝鲸PaaS平台访问协议 http or https, 如果有对接才配置修改，开源默认没对接
+  paas_host = "__BK_PAAS_FQDN__", -- 蓝鲸PaaS平台域名, 如果有对接才配置修改，开源默认没对接
+  paas_http_port = "__BK_PAAS_HTTPS_PORT__", -- 蓝鲸PaaS平台域名的端口, 如果有对接才配置修改，开源默认没对接
+  login_url = "__BK_CI_PAAS_LOGIN_URL__",   -- 蓝鲸PaaS平台登录URL, 如果有对接才配置修改，开源默认没对接
   service_name = "",  -- 指定后台微服务名称，如果对接后端是boot-assembly的单体微服务，则该配置项为bk-ci, 否则请置空会自动路由相应微服务
   allow_hosts = {
     "__BKCI_ALLOW_HOST__"
