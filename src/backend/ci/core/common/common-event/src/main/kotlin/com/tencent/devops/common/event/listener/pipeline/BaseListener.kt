@@ -26,7 +26,6 @@
 
 package com.tencent.devops.common.event.listener.pipeline
 
-import com.tencent.devops.common.api.util.UUIDUtil
 import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatcher
 import com.tencent.devops.common.event.enums.ActionType
 import com.tencent.devops.common.event.listener.Listener
@@ -54,9 +53,8 @@ abstract class BaseListener<in T : IPipelineEvent>(val pipelineEventDispatcher: 
             if (traceId.isNullOrEmpty()) {
                 if (!event.traceId.isNullOrEmpty()) {
                     MDC.put(TraceTag.BIZID, event.traceId)
-                    logger.info("baseListen put bsid: ${event.traceId}")
                 } else {
-                    MDC.put(TraceTag.BIZID, "biz-${UUIDUtil.generate()}")
+                    MDC.put(TraceTag.BIZID, TraceTag.buildBiz())
                 }
             }
             run(event)

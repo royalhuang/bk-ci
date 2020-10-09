@@ -1,6 +1,5 @@
 package com.tencent.devops.common.service.trace
 
-import com.tencent.devops.common.api.util.UUIDUtil
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.stereotype.Component
@@ -21,7 +20,7 @@ class TraceFilter : Filter {
         val httpServletRequest = request as HttpServletRequest
         val bizId = httpServletRequest?.getHeader(TraceTag.BIZID)
         if (bizId.isNullOrEmpty()) {
-            MDC.put(TraceTag.BIZID, "b-${UUIDUtil.generate()}")
+            MDC.put(TraceTag.BIZID, TraceTag.buildBiz())
         } else {
             MDC.put(TraceTag.BIZID, bizId)
         }

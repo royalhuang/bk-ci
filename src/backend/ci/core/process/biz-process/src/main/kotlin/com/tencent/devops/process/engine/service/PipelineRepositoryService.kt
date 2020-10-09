@@ -79,6 +79,7 @@ import org.joda.time.LocalDateTime
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.util.concurrent.atomic.AtomicInteger
 import javax.ws.rs.core.Response
@@ -105,6 +106,9 @@ class PipelineRepositoryService constructor(
     private val modelCheckPlugin: ModelCheckPlugin,
     private val templatePipelineDao: TemplatePipelineDao
 ) {
+
+    @Value("\${notify.silent.channel:AM,CODECC,CODECC_EE,GONGFENGSCAN}")
+    private val notifySilentChannels: String = ""
 
     fun deployPipeline(
         model: Model,
@@ -488,7 +492,7 @@ class PipelineRepositoryService constructor(
             ) {
                 if (null == pipelineSettingDao.getSetting(transactionContext, pipelineId)) {
                     var notifyTypes = "${NotifyType.EMAIL.name},${NotifyType.RTX.name}"
-                    if (channelCode == ChannelCode.AM) {
+                    if (channelCode.name in notifySilentChannels.split(",")) {
                         // 研发商店创建的内置流水线默认不发送通知消息
                         notifyTypes = ""
                     }
