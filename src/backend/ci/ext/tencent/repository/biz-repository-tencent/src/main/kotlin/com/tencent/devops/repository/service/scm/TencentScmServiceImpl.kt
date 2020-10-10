@@ -201,7 +201,8 @@ class TencentScmServiceImpl @Autowired constructor(val client: Client) : IScmSer
             token = token,
             region = region,
             userName = userName,
-            event = event
+            event = event,
+            hookUrl = hookUrl
         )
     }
 
