@@ -26,18 +26,14 @@
 
 package com.tencent.devops.process.engine.service
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.tencent.devops.common.api.constant.KEY_CHANNEL
 import com.tencent.devops.common.api.constant.KEY_END_TIME
 import com.tencent.devops.common.api.constant.KEY_START_TIME
-import com.tencent.devops.common.api.exception.RemoteServiceException
 import com.tencent.devops.common.api.pojo.AtomMonitorData
 import com.tencent.devops.common.api.pojo.ErrorType
 import com.tencent.devops.common.api.pojo.OrganizationDetailInfo
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.ObjectReplaceEnvVarUtil
-import com.tencent.devops.common.api.util.OkhttpUtils
 import com.tencent.devops.common.api.util.timestampmilli
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatcher
@@ -68,7 +64,6 @@ import com.tencent.devops.process.service.BuildVariableService
 import com.tencent.devops.process.service.PipelineTaskService
 import com.tencent.devops.process.service.measure.AtomMonitorEventDispatcher
 import com.tencent.devops.process.utils.PIPELINE_ELEMENT_ID
-import com.tencent.devops.process.utils.PIPELINE_TURBO_TASK_ID
 import com.tencent.devops.process.utils.PIPELINE_VMSEQ_ID
 import com.tencent.devops.process.utils.PipelineVarUtil
 import com.tencent.devops.project.api.service.ServiceProjectResource
@@ -76,12 +71,10 @@ import com.tencent.devops.project.pojo.ProjectVO
 import com.tencent.devops.store.api.container.ServiceContainerAppResource
 import com.tencent.devops.store.pojo.app.BuildEnv
 import com.tencent.devops.store.pojo.common.KEY_VERSION
-import okhttp3.Request
 import org.apache.lucene.util.RamUsageEstimator
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.cloud.consul.discovery.ConsulDiscoveryClient
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
@@ -100,7 +93,6 @@ class PipelineVMBuildService @Autowired(required = false) constructor(
     private val pipelineTaskService: PipelineTaskService,
     private val redisOperation: RedisOperation,
     private val jmxElements: JmxElements,
-    private val consulClient: ConsulDiscoveryClient?,
     private val buildExtService: PipelineBuildExtService,
     private val client: Client
 ) {
@@ -468,11 +460,11 @@ class PipelineVMBuildService @Autowired(required = false) constructor(
             PIPELINE_VMSEQ_ID to vmSeqId,
             PIPELINE_ELEMENT_ID to task.taskId
         )
+        buildVariable.putAll(extVarMap)
 
         PipelineVarUtil.fillOldVar(buildVariable)
 
         buildVariable.putAll(allVariable)
-        buildVariable.putAll(extVarMap)
 
         val buildTask = BuildTask(
             buildId = buildId,
