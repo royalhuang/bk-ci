@@ -42,7 +42,7 @@ import com.tencent.devops.dispatch.docker.sdk.jmx.BuildBean
 import com.tencent.devops.dispatch.docker.sdk.service.DispatchService
 import com.tencent.devops.dispatch.docker.sdk.service.JobQuotaService
 
-@Configuration
+//@Configuration
 @ConditionalOnWebApplication
 class SDKConfiguration {
     @Value("\${gateway.url:#{null}}")

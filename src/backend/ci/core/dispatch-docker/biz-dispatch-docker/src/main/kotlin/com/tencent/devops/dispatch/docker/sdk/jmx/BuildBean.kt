@@ -34,7 +34,7 @@ import org.springframework.jmx.export.annotation.ManagedResource
 import org.springframework.stereotype.Component
 import java.util.concurrent.atomic.AtomicLong
 
-@Component
+//@Component
 @ManagedResource(objectName = "com.tencent.devops.dispatcher.sdk:type=builds",
         description = "dispatcher sdk build jmx metrics")
 class BuildBean {

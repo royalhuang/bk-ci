@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.util.regex.Pattern
 
-@Component
+//@Component
 interface BuildListener {
 
     fun getStartupQueue(): String
