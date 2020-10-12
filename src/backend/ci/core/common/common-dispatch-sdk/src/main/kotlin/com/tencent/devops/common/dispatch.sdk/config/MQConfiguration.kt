@@ -51,8 +51,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.Ordered
 
 @Configuration
-@ConditionalOnWebApplication
-@AutoConfigureOrder(Ordered.LOWEST_PRECEDENCE)
 class MQConfiguration @Autowired constructor() {
 
     @Bean
