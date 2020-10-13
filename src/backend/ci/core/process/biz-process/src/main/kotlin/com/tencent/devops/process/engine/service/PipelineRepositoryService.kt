@@ -121,7 +121,7 @@ class PipelineRepositoryService constructor(
 
         // 生成流水线ID,新流水线以p-开头，以区分以前旧数据
         val pipelineId = signPipelineId ?: pipelineIdGenerator.getNextId()
-        logger.info("deployPipeline projectId:$projectId,pipelineId:$pipelineId,userId:$userId,create:$create")
+
         val modelTasks = initModel(
             model = model,
             projectId = projectId,
@@ -130,7 +130,7 @@ class PipelineRepositoryService constructor(
             create = create,
             channelCode = channelCode
         )
-        logger.info("deployPipeline projectId:$projectId,pipelineId:$pipelineId,modelTasks:$modelTasks")
+
         val buildNo = (model.stages[0].containers[0] as TriggerContainer).buildNo
         val triggerContainer = model.stages[0].containers[0] as TriggerContainer
         var canManualStartup = false
@@ -555,7 +555,6 @@ class PipelineRepositoryService constructor(
         maxPipelineResNum: Int? = null
     ): String {
         val taskCount: Int = model.taskCount()
-        logger.info("templatePipelineUpdate projectId:$projectId,pipelineId:$pipelineId,model:$model,modelTasks:$modelTasks")
         dslContext.transaction { configuration ->
             val transactionContext = DSL.using(configuration)
             val version = pipelineInfoDao.update(
