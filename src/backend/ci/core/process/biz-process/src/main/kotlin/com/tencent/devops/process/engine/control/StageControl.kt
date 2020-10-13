@@ -177,7 +177,6 @@ class StageControl @Autowired constructor(
 
                     val triggerUsers = stage.controlOption?.stageControlOption?.triggerUsers?.joinToString(",") ?: ""
                     val realUsers = EnvUtils.parseEnv(triggerUsers, variables).split(",").toList()
-                    stage.controlOption!!.stageControlOption.manualTrigger = false
                     stage.controlOption!!.stageControlOption.triggerUsers = realUsers
                     NotifyTemplateUtils.sendReviewNotify(
                         client = client,
