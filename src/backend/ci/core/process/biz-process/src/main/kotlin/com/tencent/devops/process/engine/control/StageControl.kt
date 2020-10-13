@@ -127,7 +127,7 @@ class StageControl @Autowired constructor(
             var buildStatus: BuildStatus = BuildStatus.SUCCEED
 
             // 只有在非手动触发该Stage的首次运行做审核暂停
-            val needPause = stage.controlOption?.stageControlOption?.manualTrigger == true && source != BS_MANUAL_START_STAGE && stage.executeCount == 1
+            val needPause = stage.controlOption?.stageControlOption?.manualTrigger == true && source != BS_MANUAL_START_STAGE
 
             val fastKill = stage.controlOption?.fastKill == true && source == "$BS_CONTAINER_END_SOURCE_PREIX${BuildStatus.FAILED}"
 
@@ -183,6 +183,7 @@ class StageControl @Autowired constructor(
 
                     val triggerUsers = stage.controlOption?.stageControlOption?.triggerUsers?.joinToString(",") ?: ""
                     val realUsers = EnvUtils.parseEnv(triggerUsers, variables).split(",").toList()
+                    stage.controlOption!!.stageControlOption.manualTrigger = false
                     stage.controlOption!!.stageControlOption.triggerUsers = realUsers
                     sendStageReviewNotify(projectId, pipelineId, buildId, realUsers, variables)
                     pipelineStageService.pauseStage(
