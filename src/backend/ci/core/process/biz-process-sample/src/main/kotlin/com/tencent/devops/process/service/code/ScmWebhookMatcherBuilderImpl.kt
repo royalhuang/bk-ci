@@ -24,40 +24,31 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.dispatch.listener
+package com.tencent.devops.process.service.code
 
-import com.tencent.devops.dispatch.service.PipelineBuildLessDispatchService
-import com.tencent.devops.process.pojo.mq.PipelineBuildLessShutdownDispatchEvent
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
+import com.tencent.devops.process.engine.service.PipelineWebhookService
+import com.tencent.devops.process.engine.service.code.GitWebHookMatcher
+import com.tencent.devops.process.engine.service.code.GithubWebHookMatcher
+import com.tencent.devops.process.engine.service.code.GitlabWebHookMatcher
+import com.tencent.devops.process.engine.service.code.ScmWebhookMatcherBuilder
+import com.tencent.devops.process.engine.service.code.SvnWebHookMatcher
+import com.tencent.devops.process.pojo.code.ScmWebhookMatcher
+import com.tencent.devops.process.pojo.code.git.GitEvent
+import com.tencent.devops.process.pojo.code.github.GithubEvent
+import com.tencent.devops.process.pojo.code.svn.SvnCommitEvent
+import com.tencent.devops.process.pojo.scm.code.GitlabCommitEvent
 import org.springframework.stereotype.Service
 
 @Service
-class BuildLessAgentShutdownListener @Autowired
-constructor(private val pipelineDispatchService: PipelineBuildLessDispatchService) {
+class ScmWebhookMatcherBuilderImpl : ScmWebhookMatcherBuilder {
+    override fun createGitWebHookMatcher(event: GitEvent): ScmWebhookMatcher = GitWebHookMatcher(event)
 
-/*    @RabbitListener(
-        bindings = [(QueueBinding(
-            key = MQ.ROUTE_BUILD_LESS_AGENT_SHUTDOWN_DISPATCH, value = Queue(
-                value = MQ.QUEUE_BUILD_LESS_AGENT_SHUTDOWN_DISPATCH, durable = "true"
-            ),
-            exchange = Exchange(
-                value = MQ.EXCHANGE_BUILD_LESS_AGENT_LISTENER_DIRECT,
-                durable = "true",
-                delayed = "true",
-                type = ExchangeTypes.DIRECT
-            )
-        ))]
-    )*/
-    fun listenAgentStartUpEvent(pipelineBuildLessDockerAgentShutdownEvent: PipelineBuildLessShutdownDispatchEvent) {
-        try {
-            pipelineDispatchService.shutdown(pipelineBuildLessDockerAgentShutdownEvent)
-        } catch (ignored: Throwable) {
-            logger.error("Fail to start the pipe build($pipelineBuildLessDockerAgentShutdownEvent)", ignored)
-        }
-    }
+    override fun createSvnWebHookMatcher(
+        event: SvnCommitEvent,
+        pipelineWebhookService: PipelineWebhookService
+    ): ScmWebhookMatcher = SvnWebHookMatcher(event, pipelineWebhookService)
 
-    companion object {
-        private val logger = LoggerFactory.getLogger(BuildLessAgentShutdownListener::class.java)
-    }
+    override fun createGitlabWebHookMatcher(event: GitlabCommitEvent): ScmWebhookMatcher = GitlabWebHookMatcher(event)
+
+    override fun createGithubWebHookMatcher(event: GithubEvent): ScmWebhookMatcher = GithubWebHookMatcher(event)
 }
