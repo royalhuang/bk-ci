@@ -59,8 +59,8 @@ import com.tencent.devops.common.pipeline.type.agent.AgentType
 import com.tencent.devops.common.pipeline.type.agent.ThirdPartyAgentIDDispatchType
 import com.tencent.devops.common.pipeline.type.devcloud.PublicDevCloudDispathcType
 import com.tencent.devops.common.pipeline.type.docker.DockerDispatchType
+import com.tencent.devops.common.pipeline.type.docker.ImageType
 import com.tencent.devops.common.pipeline.type.macos.MacOSDispatchType
-import com.tencent.devops.common.pipeline.type.pcg.PCGDispatchType
 import com.tencent.devops.common.service.utils.HomeHostUtil
 import com.tencent.devops.environment.api.thirdPartyAgent.ServicePreBuildAgentResource
 import com.tencent.devops.environment.pojo.thirdPartyAgent.ThirdPartyAgentStaticInfo
@@ -343,7 +343,10 @@ class PreBuildService @Autowired constructor(
                         throw OperationException("当 resourceType = REMOTE, pool参数不能为空")
                     }
 
-                    if (this.type == PoolType.DockerOnVm || this.type == PoolType.DockerOnDevCloud || this.type == PoolType.DockerOnPcg) {
+                    if (null == this.type ||
+                            this.type == PoolType.DockerOnVm ||
+                            this.type == PoolType.DockerOnDevCloud ||
+                            this.type == PoolType.DockerOnPcg) {
                         if (null == this.container) {
                             logger.error("getDispatchType , remote , pool.type:{} , container is null", this.type)
                             throw OperationException("当 pool.type = ${this.type}, container参数不能为空")
@@ -351,21 +354,17 @@ class PreBuildService @Autowired constructor(
                     }
 
                     when (this.type) {
-                        null -> DockerDispatchType(
-                                this.container
-                        )
-                        
-                        PoolType.DockerOnVm -> DockerDispatchType(
-                                this.container
+                        null, PoolType.DockerOnVm -> DockerDispatchType(
+                                dockerBuildVersion = this.container,
+                                imageType = ImageType.THIRD,
+                                credentialId = this.credential?.credentialId
                         )
 
                         PoolType.DockerOnDevCloud -> PublicDevCloudDispathcType(
                                 this.container!!,
-                                "0"
-                        )
-
-                        PoolType.DockerOnPcg -> PCGDispatchType(
-                                this.container!!
+                                "0",
+                                imageType = ImageType.THIRD,
+                                credentialId = this.credential?.credentialId
                         )
 
                         else -> {
