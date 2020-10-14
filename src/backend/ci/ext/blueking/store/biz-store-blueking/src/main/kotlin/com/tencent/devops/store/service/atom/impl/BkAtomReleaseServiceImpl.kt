@@ -28,7 +28,6 @@ package com.tencent.devops.store.service.atom.impl
 
 import com.tencent.devops.common.api.constant.BEGIN
 import com.tencent.devops.common.api.constant.COMMIT
-import com.tencent.devops.common.api.constant.CommonMessageCode
 import com.tencent.devops.common.api.constant.DOING
 import com.tencent.devops.common.api.constant.END
 import com.tencent.devops.common.api.constant.NUM_FOUR
@@ -41,23 +40,20 @@ import com.tencent.devops.common.api.constant.UNDO
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.service.utils.MessageCodeUtil
 import com.tencent.devops.model.store.tables.records.TAtomRecord
-import com.tencent.devops.store.constant.StoreMessageCode
-import com.tencent.devops.model.store.tables.records.TAtomRecord
 import com.tencent.devops.store.pojo.atom.MarketAtomCreateRequest
 import com.tencent.devops.store.pojo.atom.MarketAtomUpdateRequest
 import com.tencent.devops.store.pojo.atom.enums.AtomPackageSourceTypeEnum
 import com.tencent.devops.store.pojo.atom.enums.AtomStatusEnum
 import com.tencent.devops.store.pojo.common.ReleaseProcessItem
-import com.tencent.devops.store.pojo.common.enums.StoreTypeEnum
-import com.tencent.devops.store.service.atom.SampleAtomReleaseService
+import com.tencent.devops.store.service.atom.BkAtomReleaseService
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
-class SampleAtomReleaseServiceImpl : SampleAtomReleaseService, AtomReleaseServiceImpl() {
+class BkAtomReleaseServiceImpl : BkAtomReleaseService, AtomReleaseServiceImpl() {
 
-    private val logger = LoggerFactory.getLogger(SampleAtomReleaseServiceImpl::class.java)
+    private val logger = LoggerFactory.getLogger(BkAtomReleaseServiceImpl::class.java)
 
     override fun handleAtomPackage(
         marketAtomCreateRequest: MarketAtomCreateRequest,
@@ -93,7 +89,7 @@ class SampleAtomReleaseServiceImpl : SampleAtomReleaseService, AtomReleaseServic
         marketAtomUpdateRequest: MarketAtomUpdateRequest,
         atomRecord: TAtomRecord
     ): Result<Boolean> {
-        // 开源版升级插件暂无特殊参数需要校验
+        // 企业版升级插件暂无特殊参数需要校验
         return Result(true)
     }
 
@@ -128,70 +124,5 @@ class SampleAtomReleaseServiceImpl : SampleAtomReleaseService, AtomReleaseServic
         processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(TEST), TEST, NUM_THREE, UNDO))
         processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(END), END, NUM_FOUR, UNDO))
         return processInfo
-    }
-
-    /**
-     * 检查版本发布过程中的操作权限
-     */
-    override fun checkAtomVersionOptRight(
-        userId: String,
-        atomId: String,
-        status: Byte,
-        isNormalUpgrade: Boolean?
-    ): Pair<Boolean, String> {
-        logger.info("checkAtomVersionOptRight, userId=$userId, atomId=$atomId, status=$status, isNormalUpgrade=$isNormalUpgrade")
-        val record =
-            marketAtomDao.getAtomRecordById(dslContext, atomId) ?: return Pair(
-                false,
-                CommonMessageCode.PARAMETER_IS_INVALID
-            )
-        val atomCode = record.atomCode
-        val creator = record.creator
-        val recordStatus = record.atomStatus
-
-        // 判断用户是否有权限(当前版本的创建者和管理员可以操作)
-        if (!(storeMemberDao.isStoreAdmin(
-                dslContext = dslContext,
-                userId = userId,
-                storeCode = atomCode,
-                storeType = StoreTypeEnum.ATOM.type.toByte()
-            ) || creator == userId)
-        ) {
-            return Pair(false, CommonMessageCode.PERMISSION_DENIED)
-        }
-
-        logger.info("record status=$recordStatus, status=$status")
-        var validateFlag = true
-        if (status == AtomStatusEnum.COMMITTING.status.toByte() &&
-            recordStatus != AtomStatusEnum.INIT.status.toByte()
-        ) {
-            validateFlag = false
-        } else if (status == AtomStatusEnum.TESTING.status.toByte() &&
-            recordStatus != AtomStatusEnum.COMMITTING.status.toByte()
-        ) {
-            validateFlag = false
-        } else if (status == AtomStatusEnum.RELEASED.status.toByte() &&
-            recordStatus != AtomStatusEnum.TESTING.status.toByte()
-        ) {
-            validateFlag = false
-        } else if (status == AtomStatusEnum.GROUNDING_SUSPENSION.status.toByte() &&
-            recordStatus == AtomStatusEnum.RELEASED.status.toByte()
-        ) {
-            validateFlag = false
-        } else if (status == AtomStatusEnum.UNDERCARRIAGING.status.toByte() &&
-            recordStatus != AtomStatusEnum.RELEASED.status.toByte()
-        ) {
-            validateFlag = false
-        } else if (status == AtomStatusEnum.UNDERCARRIAGED.status.toByte() &&
-            recordStatus !in (
-                listOf(
-                    AtomStatusEnum.UNDERCARRIAGING.status.toByte(),
-                    AtomStatusEnum.RELEASED.status.toByte()
-                ))
-        ) {
-            validateFlag = false
-        }
-
-        return if (validateFlag) Pair(true, "") else Pair(false, StoreMessageCode.USER_ATOM_RELEASE_STEPS_ERROR)
     }
 }
