@@ -61,6 +61,7 @@ import com.tencent.devops.common.pipeline.type.devcloud.PublicDevCloudDispathcTy
 import com.tencent.devops.common.pipeline.type.docker.DockerDispatchType
 import com.tencent.devops.common.pipeline.type.docker.ImageType
 import com.tencent.devops.common.pipeline.type.macos.MacOSDispatchType
+import com.tencent.devops.common.pipeline.type.pcg.PCGDispatchType
 import com.tencent.devops.common.service.utils.HomeHostUtil
 import com.tencent.devops.environment.api.thirdPartyAgent.ServicePreBuildAgentResource
 import com.tencent.devops.environment.pojo.thirdPartyAgent.ThirdPartyAgentStaticInfo
@@ -354,6 +355,25 @@ class PreBuildService @Autowired constructor(
                         }
                     }
 
+                    if (this.type == PoolType.Macos) {
+                        if (null == this.systemVersion) {
+                            logger.error("getDispatchType , remote , pool.type:{} , systemVersion is null", this.type)
+                            throw OperationException("当 pool.type = ${this.type}, systemVersion参数不能为空")
+                        }
+                        if (null == this.xcodeVersion) {
+                            logger.error("getDispatchType , remote , pool.type:{} , xcodeVersion is null", this.type)
+                            throw OperationException("当 pool.type = ${this.type}, xcodeVersion参数不能为空")
+                        }
+                    }
+
+                    if (this.type == PoolType.SelfHosted) {
+                        if (null == this.agentName) {
+                            logger.error("getDispatchType, remote , pool.type:{} , agentName is null", this.type)
+                            throw OperationException("当 pool.type = ${this.type}, agentName参数不能为空")
+                        }
+                    }
+
+                    // TODO 支持workspace
                     when (this.type) {
                         null, PoolType.DockerOnVm -> DockerDispatchType(
                             dockerBuildVersion = this.container,
@@ -366,6 +386,22 @@ class PreBuildService @Autowired constructor(
                             "0",
                             imageType = ImageType.THIRD,
                             credentialId = this.credential?.credentialId
+                        )
+
+                        PoolType.DockerOnPcg -> PCGDispatchType(
+                            this.container!!
+                        )
+
+                        PoolType.Macos -> MacOSDispatchType(
+                            macOSEvn = this.systemVersion + ":" + this.xcodeVersion,
+                            systemVersion = this.systemVersion,
+                            xcodeVersion = this.xcodeVersion
+                        )
+
+                        PoolType.SelfHosted -> ThirdPartyAgentIDDispatchType(
+                            displayName = this.agentName!!,
+                            workspace = null,
+                            agentType = AgentType.NAME
                         )
 
                         else -> {
