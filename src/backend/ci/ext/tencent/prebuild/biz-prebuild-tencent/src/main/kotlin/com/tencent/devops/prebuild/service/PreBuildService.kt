@@ -57,13 +57,10 @@ import com.tencent.devops.common.pipeline.pojo.element.trigger.ManualTriggerElem
 import com.tencent.devops.common.pipeline.type.DispatchType
 import com.tencent.devops.common.pipeline.type.agent.AgentType
 import com.tencent.devops.common.pipeline.type.agent.ThirdPartyAgentIDDispatchType
-import com.tencent.devops.common.pipeline.type.devcloud.PublicDevCloudDispathcType
-import com.tencent.devops.common.pipeline.type.docker.DockerDispatchType
-import com.tencent.devops.common.pipeline.type.docker.ImageType
 import com.tencent.devops.common.pipeline.type.macos.MacOSDispatchType
-import com.tencent.devops.common.pipeline.type.pcg.PCGDispatchType
 import com.tencent.devops.common.service.utils.HomeHostUtil
 import com.tencent.devops.environment.api.thirdPartyAgent.ServicePreBuildAgentResource
+import com.tencent.devops.environment.api.thirdPartyAgent.ServiceThirdPartyAgentResource
 import com.tencent.devops.environment.pojo.thirdPartyAgent.ThirdPartyAgentStaticInfo
 import com.tencent.devops.gitci.api.TriggerBuildResource
 import com.tencent.devops.gitci.pojo.GitYamlString
@@ -297,8 +294,26 @@ class PreBuildService @Autowired constructor(
         }
 
         val dispatchType = getDispatchType(job, startUpReq, agentInfo)
+
         val vmBaseOS = if (vmType == ResourceType.REMOTE) {
             when (dispatchType) {
+                is ThirdPartyAgentIDDispatchType -> {
+                    val agentResult = client.get(ServiceThirdPartyAgentResource::class)
+                        .getAgentByDisplayName(getUserProjectId(userId), dispatchType.displayName)
+                    if (agentResult.isNotOk() || null == agentResult.data) {
+                        logger.error(
+                            "createVMBuildContainer , ThirdPartyAgentIDDispatchType , not found agent:{}",
+                            dispatchType.displayName
+                        )
+                        throw OperationException("获取不到改节点 , agentName: ${dispatchType.displayName}")
+                    } else {
+                        when (agentResult.data!!.os) {
+                            "MACOS" -> VMBaseOS.MACOS
+                            "WINDOWNS" -> VMBaseOS.WINDOWS
+                            else -> VMBaseOS.LINUX
+                        }
+                    }
+                }
                 is MacOSDispatchType -> VMBaseOS.MACOS
                 else -> VMBaseOS.LINUX
             }
@@ -344,71 +359,7 @@ class PreBuildService @Autowired constructor(
                         throw OperationException("当 resourceType = REMOTE, pool参数不能为空")
                     }
 
-                    if (null == this.type ||
-                        this.type == PoolType.DockerOnVm ||
-                        this.type == PoolType.DockerOnDevCloud ||
-                        this.type == PoolType.DockerOnPcg
-                    ) {
-                        if (null == this.container) {
-                            logger.error("getDispatchType , remote , pool.type:{} , container is null", this.type)
-                            throw OperationException("当 pool.type = ${this.type}, container参数不能为空")
-                        }
-                    }
-
-                    if (this.type == PoolType.Macos) {
-                        if (null == this.systemVersion) {
-                            logger.error("getDispatchType , remote , pool.type:{} , systemVersion is null", this.type)
-                            throw OperationException("当 pool.type = ${this.type}, systemVersion参数不能为空")
-                        }
-                        if (null == this.xcodeVersion) {
-                            logger.error("getDispatchType , remote , pool.type:{} , xcodeVersion is null", this.type)
-                            throw OperationException("当 pool.type = ${this.type}, xcodeVersion参数不能为空")
-                        }
-                    }
-
-                    if (this.type == PoolType.SelfHosted) {
-                        if (null == this.agentName) {
-                            logger.error("getDispatchType, remote , pool.type:{} , agentName is null", this.type)
-                            throw OperationException("当 pool.type = ${this.type}, agentName参数不能为空")
-                        }
-                    }
-
-                    // TODO 支持workspace
-                    when (this.type) {
-                        null, PoolType.DockerOnVm -> DockerDispatchType(
-                            dockerBuildVersion = this.container,
-                            imageType = ImageType.THIRD,
-                            credentialId = this.credential?.credentialId
-                        )
-
-                        PoolType.DockerOnDevCloud -> PublicDevCloudDispathcType(
-                            this.container!!,
-                            "0",
-                            imageType = ImageType.THIRD,
-                            credentialId = this.credential?.credentialId
-                        )
-
-                        PoolType.DockerOnPcg -> PCGDispatchType(
-                            this.container!!
-                        )
-
-                        PoolType.Macos -> MacOSDispatchType(
-                            macOSEvn = this.systemVersion + ":" + this.xcodeVersion,
-                            systemVersion = this.systemVersion,
-                            xcodeVersion = this.xcodeVersion
-                        )
-
-                        PoolType.SelfHosted -> ThirdPartyAgentIDDispatchType(
-                            displayName = this.agentName!!,
-                            workspace = null,
-                            agentType = AgentType.NAME
-                        )
-
-                        else -> {
-                            logger.error("getDispatchType , remote , not support pool type")
-                            throw OperationException("该pool.type暂未支持")
-                        }
-                    }
+                    (this.type ?: PoolType.DockerOnVm).toDispatchType(this)
                 }
             }
         }

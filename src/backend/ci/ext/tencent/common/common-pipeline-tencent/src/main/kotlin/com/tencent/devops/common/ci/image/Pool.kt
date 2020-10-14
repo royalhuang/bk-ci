@@ -36,5 +36,7 @@ data class Pool(
     val type: PoolType? = null,
     val systemVersion: String? = null,
     val xcodeVersion: String? = null,
-    val agentName: String? = null
+    val agentName: String? = null,
+    val workspace: String? = null
+
 )
