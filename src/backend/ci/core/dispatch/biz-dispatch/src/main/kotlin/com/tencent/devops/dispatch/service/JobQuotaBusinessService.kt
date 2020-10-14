@@ -72,6 +72,7 @@ class JobQuotaBusinessService @Autowired constructor(
      * job启动时记录
      */
     fun insertRunningJob(projectId: String, vmType: JobQuotaVmType, buildId: String, vmSeqId: String) {
+        logger.info("<<<JobQuotaBusinessService insertRunningJob: ${LocalDateTime.now()}")
         runningJobsDao.insert(dslContext, projectId, vmType, buildId, vmSeqId)
         redisOperation.sadd(QUOTA_PROJECT_ALL_KEY, projectId) // 所有项目集合
         checkWarning(projectId, vmType)
