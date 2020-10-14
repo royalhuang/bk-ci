@@ -134,6 +134,9 @@ if build_type == "AGENT" then
                 if obj.userId ~= nil then
                     uid = obj.userId
                 end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
+                end
 
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
                 ngx.header["X-DEVOPS-PIPELINE-ID"] = obj.pipelineId
@@ -250,6 +253,9 @@ elseif build_type == "DOCKER" then
                 local uid = ""
                 if obj.userId ~= nil then
                     uid = obj.userId
+                end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
                 end
 
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
@@ -368,6 +374,9 @@ elseif build_type == "PLUGIN_AGENT" then
                 if obj.userId ~= nil then
                     uid = obj.userId
                 end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
+                end
 
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
                 ngx.header["X-DEVOPS-PIPELINE-ID"] = obj.pipelineId
@@ -470,6 +479,9 @@ elseif build_type == "MACOS" then
                 if obj.userId ~= nil then
                     uid = obj.userId
                 end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
+                end
 
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
                 ngx.header["X-DEVOPS-PIPELINE-ID"] = obj.pipelineId
@@ -568,6 +580,9 @@ else
                 local uid = ""
                 if obj.userId ~= nil then
                     uid = obj.userId
+                end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
                 end
 
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
