@@ -24,9 +24,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.artifactory.api
+package com.tencent.devops.artifactory.api.builds
 
+import com.tencent.devops.artifactory.pojo.Count
 import com.tencent.devops.artifactory.pojo.GetFileDownloadUrlsResponse
+import com.tencent.devops.artifactory.pojo.enums.ArtifactoryType
 import com.tencent.devops.artifactory.pojo.enums.FileTypeEnum
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_BUILD_ID
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_PIPELINE_ID
@@ -72,15 +74,15 @@ interface BuildFileResource {
     @Path("/file/archive")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     fun archiveFile(
-        @ApiParam("projectCode", required = true)
+        @ApiParam("projectCode", required = false)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
-        projectCode: String,
-        @ApiParam("pipelineId", required = true)
+        projectCode: String?,
+        @ApiParam("pipelineId", required = false)
         @HeaderParam(AUTH_HEADER_DEVOPS_PIPELINE_ID)
-        pipelineId: String,
-        @ApiParam("buildId", required = true)
+        pipelineId: String?,
+        @ApiParam("buildId", required = false)
         @HeaderParam(AUTH_HEADER_DEVOPS_BUILD_ID)
-        buildId: String,
+        buildId: String?,
         @ApiParam("文件类型", required = true)
         @QueryParam("fileType")
         fileType: FileTypeEnum,
@@ -138,7 +140,7 @@ interface BuildFileResource {
         customFilePath: String?
     ): Result<GetFileDownloadUrlsResponse?>
 
-/*    @ApiOperation("跨项目拷贝文件")
+    @ApiOperation("跨项目拷贝文件")
     @Path("/artifactoryType/{artifactoryType}/acrossProjectCopy")
     @GET
     fun acrossProjectCopy(
@@ -157,5 +159,5 @@ interface BuildFileResource {
         @ApiParam("目标路径", required = true)
         @QueryParam("targetPath")
         targetPath: String
-    ): Result<Count>*/
+    ): Result<Count>
 }
