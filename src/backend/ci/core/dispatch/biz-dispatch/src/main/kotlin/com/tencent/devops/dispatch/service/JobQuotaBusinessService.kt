@@ -115,6 +115,7 @@ class JobQuotaBusinessService @Autowired constructor(
      * agent成功启动时更新
      */
     fun updateAgentStartTime(projectId: String, buildId: String, vmSeqId: String) {
+        logger.info("<<<JobQuotaBusinessService updateAgentStartTime: ${LocalDateTime.now()}")
         runningJobsDao.updateAgentStartTime(dslContext, projectId, buildId, vmSeqId)
     }
 
