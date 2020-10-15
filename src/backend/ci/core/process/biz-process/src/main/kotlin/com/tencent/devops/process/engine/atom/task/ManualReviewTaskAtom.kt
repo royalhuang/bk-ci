@@ -48,7 +48,6 @@ import com.tencent.devops.process.utils.PIPELINE_BUILD_NUM
 import com.tencent.devops.process.utils.PIPELINE_MANUAL_REVIEW_ATOM_NOTIFY_TEMPLATE
 import com.tencent.devops.process.utils.PIPELINE_NAME
 import com.tencent.devops.project.api.service.ServiceProjectResource
-import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import java.util.Date
 
@@ -57,7 +56,6 @@ import java.util.Date
  */
 class ManualReviewTaskAtom(
     private val client: Client,
-    private val dslContext: DSLContext,
     private val buildLogPrinter: BuildLogPrinter,
     private val pipelineUrlBean: PipelineUrlBean,
     private val pipelineVariableService: BuildVariableService
@@ -176,7 +174,7 @@ class ManualReviewTaskAtom(
                 buildId = buildId,
                 projectId = task.projectId,
                 pipelineId = task.pipelineId,
-                varName = param.varNamespace + MANUAL_REVIEW_ATOM_REVIEWER,
+                varName = param.namespace + MANUAL_REVIEW_ATOM_REVIEWER,
                 varValue = manualActionUserId
             )
             return when (ManualReviewAction.valueOf(manualAction)) {
