@@ -844,7 +844,8 @@ class PipelineBuildService(
                 projectId = projectId,
                 pipelineId = pipelineId,
                 buildId = buildId,
-                stageId = stageId
+                stageId = stageId,
+                controlOption = buildStage.controlOption!!
             )
         } finally {
             runLock.unlock()

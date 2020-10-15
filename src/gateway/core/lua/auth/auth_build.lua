@@ -130,6 +130,14 @@ if build_type == "AGENT" then
                     return
                 end
 
+                local uid = ""
+                if obj.userId ~= nil then
+                    uid = obj.userId
+                end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
+                end
+
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
                 ngx.header["X-DEVOPS-PIPELINE-ID"] = obj.pipelineId
                 ngx.header["X-DEVOPS-BUILD-ID"] = obj.buildId
@@ -138,6 +146,7 @@ if build_type == "AGENT" then
                 ngx.header["X-DEVOPS-VM-NAME"] = obj.vmName
                 ngx.header["X-DEVOPS-CHANNEL-CODE"] = obj.channelCode
                 ngx.header["X-DEVOPS-AGENT-SECRET-KEY"] = reqSecretKey
+                ngx.header["X-DEVOPS-UID"] = uid
                 ngx.exit(200)
                 return
             end
@@ -239,6 +248,14 @@ elseif build_type == "DOCKER" then
                     return
                 end
 
+                local uid = ""
+                if obj.userId ~= nil then
+                    uid = obj.userId
+                end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
+                end
+
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
                 ngx.header["X-DEVOPS-PIPELINE-ID"] = obj.pipelineId
                 ngx.header["X-DEVOPS-BUILD-ID"] = obj.buildId
@@ -247,6 +264,7 @@ elseif build_type == "DOCKER" then
                 ngx.header["X-DEVOPS-VM-NAME"] = obj.vmName
                 ngx.header["X-DEVOPS-CHANNEL-CODE"] = obj.channelCode
                 ngx.header["X-DEVOPS-AGENT-SECRET-KEY"] = reqSecretKey
+                ngx.header["X-DEVOPS-UID"] = uid
                 ngx.exit(200)
                 return
             end
@@ -348,6 +366,14 @@ elseif build_type == "PLUGIN_AGENT" then
                     return
                 end
 
+                local uid = ""
+                if obj.userId ~= nil then
+                    uid = obj.userId
+                end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
+                end
+
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
                 ngx.header["X-DEVOPS-PIPELINE-ID"] = obj.pipelineId
                 ngx.header["X-DEVOPS-BUILD-ID"] = obj.buildId
@@ -356,6 +382,7 @@ elseif build_type == "PLUGIN_AGENT" then
                 ngx.header["X-DEVOPS-VM-NAME"] = obj.vmName
                 ngx.header["X-DEVOPS-CHANNEL-CODE"] = obj.channelCode
                 ngx.header["X-DEVOPS-AGENT-SECRET-KEY"] = reqSecretKey
+                ngx.header["X-DEVOPS-UID"] = uid
                 ngx.exit(200)
                 return
             end
@@ -434,6 +461,14 @@ elseif build_type == "MACOS" then
                     ngx.log(ngx.STDERR, "id is null: ")
                 end
 
+                local uid = ""
+                if obj.userId ~= nil then
+                    uid = obj.userId
+                end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
+                end
+
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
                 ngx.header["X-DEVOPS-PIPELINE-ID"] = obj.pipelineId
                 ngx.header["X-DEVOPS-BUILD-ID"] = obj.buildId
@@ -442,6 +477,7 @@ elseif build_type == "MACOS" then
                 ngx.header["X-DEVOPS-VM-NAME"] = obj.id
                 ngx.header["X-DEVOPS-CHANNEL-CODE"] = ""
                 ngx.header["X-DEVOPS-AGENT-SECRET-KEY"] = obj.secretKey
+                ngx.header["X-DEVOPS-UID"] = uid
                 return
             end
         end
@@ -525,6 +561,14 @@ else
                     ngx.log(ngx.STDERR, "vmSeqId is null: ")
                 end
 
+                local uid = ""
+                if obj.userId ~= nil then
+                    uid = obj.userId
+                end
+                if ngx.var.http_x_devops_uid ~= nil and ngx.var.http_x_devops_uid ~= "" and uid == "" then
+                    uid = ngx.var.http_x_devops_uid
+                end
+
                 ngx.header["X-DEVOPS-PROJECT-ID"] = obj.projectId
                 ngx.header["X-DEVOPS-PIPELINE-ID"] = obj.pipelineId
                 ngx.header["X-DEVOPS-BUILD-ID"] = obj.buildId
@@ -533,6 +577,7 @@ else
                 ngx.header["X-DEVOPS-VM-NAME"] = obj.vmName
                 ngx.header["X-DEVOPS-CHANNEL-CODE"] = obj.channelCode
                 ngx.header["X-DEVOPS-AGENT-SECRET-KEY"] = ""
+                ngx.header["X-DEVOPS-UID"] = uid
                 ngx.exit(200)
                 return
             end

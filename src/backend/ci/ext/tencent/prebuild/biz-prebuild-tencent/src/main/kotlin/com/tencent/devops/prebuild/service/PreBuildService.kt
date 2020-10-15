@@ -33,6 +33,7 @@ import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.ci.CiBuildConfig
 import com.tencent.devops.common.ci.NORMAL_JOB
 import com.tencent.devops.common.ci.VM_JOB
+import com.tencent.devops.common.ci.image.PoolType
 import com.tencent.devops.common.ci.task.CodeCCScanInContainerTask
 import com.tencent.devops.common.ci.task.SyncLocalCodeInput
 import com.tencent.devops.common.ci.task.SyncLocalCodeTask
@@ -56,10 +57,10 @@ import com.tencent.devops.common.pipeline.pojo.element.trigger.ManualTriggerElem
 import com.tencent.devops.common.pipeline.type.DispatchType
 import com.tencent.devops.common.pipeline.type.agent.AgentType
 import com.tencent.devops.common.pipeline.type.agent.ThirdPartyAgentIDDispatchType
-import com.tencent.devops.common.pipeline.type.docker.DockerDispatchType
 import com.tencent.devops.common.pipeline.type.macos.MacOSDispatchType
 import com.tencent.devops.common.service.utils.HomeHostUtil
 import com.tencent.devops.environment.api.thirdPartyAgent.ServicePreBuildAgentResource
+import com.tencent.devops.environment.api.thirdPartyAgent.ServiceThirdPartyAgentResource
 import com.tencent.devops.environment.pojo.thirdPartyAgent.ThirdPartyAgentStaticInfo
 import com.tencent.devops.gitci.api.TriggerBuildResource
 import com.tencent.devops.gitci.pojo.GitYamlString
@@ -293,8 +294,26 @@ class PreBuildService @Autowired constructor(
         }
 
         val dispatchType = getDispatchType(job, startUpReq, agentInfo)
+
         val vmBaseOS = if (vmType == ResourceType.REMOTE) {
             when (dispatchType) {
+                is ThirdPartyAgentIDDispatchType -> {
+                    val agentResult = client.get(ServiceThirdPartyAgentResource::class)
+                        .getAgentByDisplayName(getUserProjectId(userId), dispatchType.displayName)
+                    if (agentResult.isNotOk() || null == agentResult.data) {
+                        logger.error(
+                            "createVMBuildContainer , ThirdPartyAgentIDDispatchType , not found agent:{}",
+                            dispatchType.displayName
+                        )
+                        throw OperationException("获取不到改节点 , agentName: ${dispatchType.displayName}")
+                    } else {
+                        when (agentResult.data!!.os) {
+                            "MACOS" -> VMBaseOS.MACOS
+                            "WINDOWNS" -> VMBaseOS.WINDOWS
+                            else -> VMBaseOS.LINUX
+                        }
+                    }
+                }
                 is MacOSDispatchType -> VMBaseOS.MACOS
                 else -> VMBaseOS.LINUX
             }
@@ -335,29 +354,12 @@ class PreBuildService @Autowired constructor(
 
             ResourceType.REMOTE -> {
                 with(job.job.pool) {
-                    when {
-                        this == null -> {
-                            logger.error("getDispatchType , remote , pool is null")
-                            throw OperationException("当 resourceType = REMOTE, pool参数不能为空")
-                        }
-
-                        this.container != null -> DockerDispatchType(
-                            this.container
-                        )
-
-                        this.macOS != null -> with(this.macOS!!) {
-                            MacOSDispatchType(
-                                macOSEvn = this.systemVersion!! + ":" + this.xcodeVersion!!,
-                                systemVersion = this.systemVersion!!,
-                                xcodeVersion = this.xcodeVersion!!
-                            )
-                        }
-
-                        else -> {
-                            logger.error("getDispatchType , remote , yaml is illegal")
-                            throw OperationException("无法解析当前pool参数")
-                        }
+                    if (this == null) {
+                        logger.error("getDispatchType , remote , pool is null")
+                        throw OperationException("当 resourceType = REMOTE, pool参数不能为空")
                     }
+
+                    (this.type ?: PoolType.DockerOnVm).toDispatchType(this)
                 }
             }
         }

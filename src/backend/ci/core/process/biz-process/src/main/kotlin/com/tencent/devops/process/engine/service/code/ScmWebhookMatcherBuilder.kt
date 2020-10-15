@@ -24,8 +24,25 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.dispatch.docker.sdk.pojo
+package com.tencent.devops.process.engine.service.code
 
-data class StartupMessage(
-    val message: String
-)
+import com.tencent.devops.process.engine.service.PipelineWebhookService
+import com.tencent.devops.process.pojo.code.ScmWebhookMatcher
+import com.tencent.devops.process.pojo.code.git.GitEvent
+import com.tencent.devops.process.pojo.code.github.GithubEvent
+import com.tencent.devops.process.pojo.code.svn.SvnCommitEvent
+import com.tencent.devops.process.pojo.scm.code.GitlabCommitEvent
+
+interface ScmWebhookMatcherBuilder {
+
+    fun createGitWebHookMatcher(event: GitEvent): ScmWebhookMatcher
+
+    fun createSvnWebHookMatcher(
+        event: SvnCommitEvent,
+        pipelineWebhookService: PipelineWebhookService
+    ): ScmWebhookMatcher
+
+    fun createGitlabWebHookMatcher(event: GitlabCommitEvent): ScmWebhookMatcher
+
+    fun createGithubWebHookMatcher(event: GithubEvent): ScmWebhookMatcher
+}

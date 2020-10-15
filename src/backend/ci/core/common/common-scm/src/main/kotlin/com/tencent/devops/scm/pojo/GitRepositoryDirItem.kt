@@ -24,8 +24,19 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.dispatch.docker.sdk.pojo
+package com.tencent.devops.scm.pojo
 
-data class ShutdownResponse(
-    val vmSeqIds: List<String>
+import io.swagger.annotations.ApiModel
+import io.swagger.annotations.ApiModelProperty
+
+@ApiModel("git仓库文件和目录列表")
+class GitRepositoryDirItem(
+    @ApiModelProperty("ID", required = true)
+    val id: String,
+    @ApiModelProperty("文件或目录名称", required = true)
+    val name: String,
+    @ApiModelProperty("类型", required = true)
+    val type: String,
+    @ApiModelProperty("模式", required = true)
+    val mode: String
 )
