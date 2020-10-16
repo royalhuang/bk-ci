@@ -112,7 +112,7 @@ class BuildFileResourceImpl @Autowired constructor(private val archiveFileServic
         )
     }
 
-    override fun acrossProjectCopy(
+/*    override fun acrossProjectCopy(
         projectId: String,
         artifactoryType: ArtifactoryType,
         path: String,
@@ -126,5 +126,5 @@ class BuildFileResourceImpl @Autowired constructor(private val archiveFileServic
             targetPath = targetPath,
             targetProjectId = targetProjectId
         )
-    }
+    }*/
 }
