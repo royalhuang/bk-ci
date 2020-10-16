@@ -42,6 +42,7 @@ import com.tencent.devops.repository.pojo.oauth.GitToken
 import com.tencent.devops.scm.code.git.api.GitBranch
 import com.tencent.devops.scm.code.git.api.GitTag
 import com.tencent.devops.scm.pojo.GitRepositoryDirItem
+import com.tencent.devops.scm.pojo.GitCommit
 import com.tencent.devops.scm.pojo.GitRepositoryResp
 import com.tencent.devops.scm.pojo.Project
 import javax.servlet.http.HttpServletResponse
@@ -162,4 +163,11 @@ interface IGitService {
     fun getRepoMembers(accessToken: String, userId: String, repoName: String): List<GitMember>
 
     fun getRepoAllMembers(accessToken: String, userId: String, repoName: String): List<GitMember>
+
+    fun getRepoRecentCommitInfo(
+        repoName: String,
+        sha: String,
+        token: String,
+        tokenType: TokenTypeEnum
+    ): Result<GitCommit?>
 }

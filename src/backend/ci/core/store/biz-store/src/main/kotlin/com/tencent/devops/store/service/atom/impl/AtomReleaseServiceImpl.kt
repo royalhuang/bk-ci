@@ -94,6 +94,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.util.StringUtils
 import java.time.LocalDateTime
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 abstract class AtomReleaseServiceImpl @Autowired constructor() : AtomReleaseService {
 
@@ -136,6 +139,7 @@ abstract class AtomReleaseServiceImpl @Autowired constructor() : AtomReleaseServ
 
     companion object {
         private val logger = LoggerFactory.getLogger(AtomReleaseServiceImpl::class.java)
+        private val threadPoolExecutor = ThreadPoolExecutor(5, 10, 60, TimeUnit.SECONDS, LinkedBlockingQueue(50))
     }
 
     @Value("\${store.atomDetailBaseUrl}")
@@ -841,7 +845,11 @@ abstract class AtomReleaseServiceImpl @Autowired constructor() : AtomReleaseServ
         return Result(true)
     }
 
-    abstract fun getPassTestStatus(isNormalUpgrade: Boolean): Byte
+    abstract fun getPreValidatePassTestStatus(): Byte
+
+    abstract fun doPassTestPreOperation(atomId: String, atomStatus: Byte, userId: String)
+
+    abstract fun getAfterValidatePassTestStatus(validateFlag: Boolean, isNormalUpgrade: Boolean): Byte
 
     /**
      * 通过测试
@@ -857,52 +865,62 @@ abstract class AtomReleaseServiceImpl @Autowired constructor() : AtomReleaseServ
                 false
             )
         }
-        // 查看当前版本之前的版本是否有已发布的，如果有已发布的版本则只是普通的升级操作而不需要审核
-        val isNormalUpgrade = getNormalUpgradeFlag(atomRecord.atomCode, atomRecord.atomStatus.toInt())
-        logger.info("passTest isNormalUpgrade is:$isNormalUpgrade")
-        val atomStatus = getPassTestStatus(isNormalUpgrade)
-        val (checkResult, code) = checkAtomVersionOptRight(userId, atomId, atomStatus, isNormalUpgrade)
+        val atomStatus = getPreValidatePassTestStatus()
+        val (checkResult, code) = checkAtomVersionOptRight(userId, atomId, atomStatus)
         if (!checkResult) {
             return MessageCodeUtil.generateResponseDataObject(code)
         }
-        if (isNormalUpgrade) {
-            // 更新质量红线信息
-            atomQualityService.updateQualityInApprove(atomRecord.atomCode, atomStatus)
-            val creator = atomRecord.creator
-            dslContext.transaction { t ->
-                val context = DSL.using(t)
-                // 清空旧版本LATEST_FLAG
-                marketAtomDao.cleanLatestFlag(context, atomRecord.atomCode)
-                // 记录发布信息
-                val pubTime = LocalDateTime.now()
-                storeReleaseDao.addStoreReleaseInfo(
-                    dslContext = context,
-                    userId = userId,
-                    storeReleaseCreateRequest = StoreReleaseCreateRequest(
-                        storeCode = atomRecord.atomCode,
-                        storeType = StoreTypeEnum.ATOM,
-                        latestUpgrader = creator,
-                        latestUpgradeTime = pubTime
+        doPassTestPreOperation(atomId, atomStatus, userId)
+        threadPoolExecutor.submit {
+            val validateFlag = validateAtomPassTestCondition(userId, atomId)
+            // 查看当前版本之前的版本是否有已发布的，如果有已发布的版本则只是普通的升级操作而不需要审核
+            val isNormalUpgrade = getNormalUpgradeFlag(atomRecord.atomCode, atomRecord.atomStatus.toInt())
+            logger.info("passTest isNormalUpgrade is:$isNormalUpgrade")
+            val atomFinalStatus = getAfterValidatePassTestStatus(validateFlag, isNormalUpgrade)
+            if (isNormalUpgrade) {
+                // 更新质量红线信息
+                atomQualityService.updateQualityInApprove(atomRecord.atomCode, atomFinalStatus)
+                val creator = atomRecord.creator
+                dslContext.transaction { t ->
+                    val context = DSL.using(t)
+                    // 清空旧版本LATEST_FLAG
+                    marketAtomDao.cleanLatestFlag(context, atomRecord.atomCode)
+                    // 记录发布信息
+                    val pubTime = LocalDateTime.now()
+                    storeReleaseDao.addStoreReleaseInfo(
+                        dslContext = context,
+                        userId = userId,
+                        storeReleaseCreateRequest = StoreReleaseCreateRequest(
+                            storeCode = atomRecord.atomCode,
+                            storeType = StoreTypeEnum.ATOM,
+                            latestUpgrader = creator,
+                            latestUpgradeTime = pubTime
+                        )
                     )
-                )
-                marketAtomDao.updateAtomInfoById(
-                    context,
-                    userId,
-                    atomId,
-                    UpdateAtomInfo(atomStatus = atomStatus, latestFlag = true, pubTime = pubTime)
-                )
+                    marketAtomDao.updateAtomInfoById(
+                        context,
+                        userId,
+                        atomId,
+                        UpdateAtomInfo(atomStatus = atomFinalStatus, latestFlag = true, pubTime = pubTime)
+                    )
+                    // 通过websocket推送状态变更消息
+                    storeWebsocketService.sendWebsocketMessage(userId, atomId)
+                }
+                // 发送版本发布邮件
+                atomNotifyService.sendAtomReleaseAuditNotifyMessage(atomId, AuditTypeEnum.AUDIT_SUCCESS)
+            } else {
+                marketAtomDao.setAtomStatusById(dslContext, atomId, atomFinalStatus, userId, "")
                 // 通过websocket推送状态变更消息
                 storeWebsocketService.sendWebsocketMessage(userId, atomId)
             }
-            // 发送版本发布邮件
-            atomNotifyService.sendAtomReleaseAuditNotifyMessage(atomId, AuditTypeEnum.AUDIT_SUCCESS)
-        } else {
-            marketAtomDao.setAtomStatusById(dslContext, atomId, atomStatus, userId, "")
-            // 通过websocket推送状态变更消息
-            storeWebsocketService.sendWebsocketMessage(userId, atomId)
         }
         return Result(true)
     }
+
+    /**
+     * 校验插件测试条件
+     */
+    abstract fun validateAtomPassTestCondition(userId: String, atomId: String): Boolean
 
     /**
      * 检查版本发布过程中的操作权限

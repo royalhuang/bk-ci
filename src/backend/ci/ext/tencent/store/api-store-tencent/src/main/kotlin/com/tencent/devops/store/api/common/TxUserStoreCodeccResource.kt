@@ -26,28 +26,65 @@
 
 package com.tencent.devops.store.api.common
 
+import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID
 import com.tencent.devops.common.api.pojo.Result
-import com.tencent.devops.store.pojo.common.StoreValidateCodeccResultRequest
+import com.tencent.devops.common.web.annotation.BkField
+import com.tencent.devops.common.web.constant.BkStyleEnum
+import com.tencent.devops.plugin.codecc.pojo.CodeccMeasureInfo
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
 import javax.ws.rs.Consumes
+import javax.ws.rs.GET
+import javax.ws.rs.HeaderParam
 import javax.ws.rs.POST
 import javax.ws.rs.Path
+import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
+import javax.ws.rs.QueryParam
 import javax.ws.rs.core.MediaType
 
-@Api(tags = ["BUILD_STORE_CODECC"], description = "store组件代码扫描")
-@Path("/build/store/codecc")
+@Api(tags = ["USER_STORE_CODECC"], description = "store组件代码扫描")
+@Path("/user/store/codecc")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-interface TxBuildStoreCodeccResource {
+interface TxUserStoreCodeccResource {
 
-    @ApiOperation("codecc代码扫描结果校验")
+    @ApiOperation("根据组件标识获取codecc度量信息")
+    @GET
+    @Path("/types/{storeType}/codes/{storeCode}/measurement")
+    fun getCodeccMeasureInfo(
+        @ApiParam("userId", required = true)
+        @HeaderParam(AUTH_HEADER_USER_ID)
+        userId: String,
+        @ApiParam("组件类型", required = true)
+        @PathParam("storeType")
+        @BkField(patternStyle = BkStyleEnum.CODE_STYLE)
+        storeType: String,
+        @ApiParam("组件标识", required = true)
+        @PathParam("storeCode")
+        @BkField(patternStyle = BkStyleEnum.CODE_STYLE)
+        storeCode: String,
+        @ApiParam("组件ID", required = false)
+        @QueryParam("storeId")
+        @BkField(patternStyle = BkStyleEnum.CODE_STYLE, required = false)
+        storeId: String?
+    ): Result<CodeccMeasureInfo?>
+
+    @ApiOperation("触发codecc扫描任务")
     @POST
-    @Path("/validate")
-    fun validate(
-        @ApiParam(value = "校验codecc扫描结果请求报文体", required = true)
-        storeValidateCodeccResultRequest: StoreValidateCodeccResultRequest
-    ): Result<Boolean>
+    @Path("/types/{storeType}/codes/{storeCode}/task/start")
+    fun startCodeccTask(
+        @ApiParam("userId", required = true)
+        @HeaderParam(AUTH_HEADER_USER_ID)
+        userId: String,
+        @ApiParam("组件类型", required = true)
+        @PathParam("storeType")
+        @BkField(patternStyle = BkStyleEnum.CODE_STYLE)
+        storeType: String,
+        @ApiParam("组件标识", required = true)
+        @PathParam("storeCode")
+        @BkField(patternStyle = BkStyleEnum.CODE_STYLE)
+        storeCode: String
+    ): Result<String?>
 }

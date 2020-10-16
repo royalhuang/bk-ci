@@ -31,12 +31,15 @@ import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.plugin.codecc.pojo.BlueShieldResponse
 import com.tencent.devops.plugin.codecc.pojo.CodeccBuildInfo
 import com.tencent.devops.plugin.codecc.pojo.CodeccCallback
+import com.tencent.devops.plugin.codecc.pojo.CodeccMeasureInfo
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
 import javax.ws.rs.Consumes
+import javax.ws.rs.GET
 import javax.ws.rs.POST
 import javax.ws.rs.Path
+import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
 import javax.ws.rs.QueryParam
 import javax.ws.rs.core.MediaType
@@ -115,5 +118,50 @@ interface ServiceCodeccResource {
         type: String,
         @QueryParam("规则集ID")
         checkerSetId: String
+    ): Result<Boolean>
+
+    @ApiOperation("获取codecc度量信息")
+    @GET
+    @Path("/task/repo/{repoProjectName}/measurement")
+    fun getCodeccMeasureInfo(
+        @ApiParam("代码库名称", required = true)
+        @PathParam("repoProjectName")
+        repoProjectName: String,
+        @ApiParam("代码库提交ID", required = false)
+        @QueryParam("commitId")
+        commitId: String? = null
+    ): Result<CodeccMeasureInfo?>
+
+    @ApiOperation("获取codecc任务状态信息")
+    @GET
+    @Path("/task/repo/{repoProjectName}/status")
+    fun getCodeccTaskStatusInfo(
+        @ApiParam("代码库名称", required = true)
+        @PathParam("repoProjectName")
+        repoProjectName: String,
+        @ApiParam("代码库提交ID", required = false)
+        @QueryParam("commitId")
+        commitId: String? = null
+    ): Result<Int>
+
+    @ApiOperation("触发codecc扫描任务")
+    @POST
+    @Path("/openScan/trigger/repo/{repoProjectName}")
+    fun startCodeccTask(
+        @ApiParam("代码库名称", required = true)
+        @PathParam("repoProjectName")
+        repoProjectName: String,
+        @ApiParam("代码库提交ID", required = false)
+        @QueryParam("commitId")
+        commitId: String? = null
+    ): Result<String>
+
+    @ApiOperation("创建codecc扫描流水线")
+    @POST
+    @Path("/task/repo/{repoProjectName}/pipeline/create")
+    fun createCodeccPipeline(
+        @ApiParam("代码库名称", required = true)
+        @PathParam("repoProjectName")
+        repoProjectName: String
     ): Result<Boolean>
 }

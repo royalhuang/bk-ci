@@ -29,6 +29,7 @@ package com.tencent.devops.store.service.atom.impl
 import com.tencent.devops.common.api.constant.APPROVE
 import com.tencent.devops.common.api.constant.BEGIN
 import com.tencent.devops.common.api.constant.BUILD
+import com.tencent.devops.common.api.constant.CODECC
 import com.tencent.devops.common.api.constant.COMMIT
 import com.tencent.devops.common.api.constant.CommonMessageCode
 import com.tencent.devops.common.api.constant.DOING
@@ -37,6 +38,7 @@ import com.tencent.devops.common.api.constant.FAIL
 import com.tencent.devops.common.api.constant.NUM_FIVE
 import com.tencent.devops.common.api.constant.NUM_FOUR
 import com.tencent.devops.common.api.constant.NUM_ONE
+import com.tencent.devops.common.api.constant.NUM_SEVEN
 import com.tencent.devops.common.api.constant.NUM_SIX
 import com.tencent.devops.common.api.constant.NUM_THREE
 import com.tencent.devops.common.api.constant.NUM_TWO
@@ -50,10 +52,8 @@ import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.pipeline.pojo.AtomBaseInfo
 import com.tencent.devops.common.pipeline.pojo.AtomMarketInitPipelineReq
-import com.tencent.devops.common.service.Profile
 import com.tencent.devops.common.service.utils.MessageCodeUtil
 import com.tencent.devops.model.store.tables.records.TAtomRecord
-import com.tencent.devops.common.service.utils.SpringContextUtil
 import com.tencent.devops.plugin.api.ServiceCodeccResource
 import com.tencent.devops.process.api.service.ServiceBuildResource
 import com.tencent.devops.process.api.service.ServicePipelineInitResource
@@ -73,8 +73,10 @@ import com.tencent.devops.store.pojo.atom.enums.AtomPackageSourceTypeEnum
 import com.tencent.devops.store.pojo.atom.enums.AtomStatusEnum
 import com.tencent.devops.store.pojo.common.BK_FRONTEND_DIR_NAME
 import com.tencent.devops.store.pojo.common.ReleaseProcessItem
+import com.tencent.devops.store.pojo.common.STORE_REPO_COMMIT_KEY_PREFIX
 import com.tencent.devops.store.pojo.common.enums.StoreTypeEnum
 import com.tencent.devops.store.service.atom.TxAtomReleaseService
+import com.tencent.devops.store.service.common.TxStoreCodeccService
 import org.apache.commons.lang.StringEscapeUtils
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
@@ -103,8 +105,14 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
     @Autowired
     lateinit var businessConfigDao: BusinessConfigDao
 
+    @Autowired
+    lateinit var txStoreCodeccService: TxStoreCodeccService
+
     @Value("\${git.plugin.nameSpaceId}")
     private lateinit var pluginNameSpaceId: String
+
+    @Value("\${git.plugin.nameSpaceName}")
+    private lateinit var pluginNameSpaceName: String
 
     private val logger = LoggerFactory.getLogger(TxAtomReleaseServiceImpl::class.java)
 
@@ -162,6 +170,16 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
         }
         if (null == repositoryInfo) {
             return MessageCodeUtil.generateResponseDataObject(StoreMessageCode.USER_CREATE_REPOSITORY_FAIL)
+        }
+        // 创建codecc扫描流水线
+        val createCodeccPipelineResult = client.get(ServiceCodeccResource::class).createCodeccPipeline(repositoryInfo.aliasName)
+        logger.info("createCodeccPipelineResult is :$createCodeccPipelineResult")
+        val createFlag = createCodeccPipelineResult.data
+        if (createCodeccPipelineResult.isNotOk() || createFlag != true) {
+            throw ErrorCodeException(
+                errorCode = createCodeccPipelineResult.status.toString(),
+                defaultMessage = createCodeccPipelineResult.message
+            )
         }
         return Result(mapOf("repositoryHashId" to repositoryInfo.repositoryHashId!!, "codeSrc" to repositoryInfo.url))
     }
@@ -242,7 +260,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
 
     override fun handleProcessInfo(isNormalUpgrade: Boolean, status: Int): List<ReleaseProcessItem> {
         val processInfo = initProcessInfo(isNormalUpgrade)
-        val totalStep = if (isNormalUpgrade) NUM_FIVE else NUM_SIX
+        val totalStep = if (isNormalUpgrade) NUM_SIX else NUM_SEVEN
         when (status) {
             AtomStatusEnum.INIT.status, AtomStatusEnum.COMMITTING.status -> {
                 storeCommonService.setProcessInfo(processInfo, totalStep, NUM_TWO, DOING)
@@ -256,18 +274,113 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
             AtomStatusEnum.TESTING.status -> {
                 storeCommonService.setProcessInfo(processInfo, totalStep, NUM_FOUR, DOING)
             }
-            AtomStatusEnum.AUDITING.status -> {
+            AtomStatusEnum.CODECCING.status -> {
                 storeCommonService.setProcessInfo(processInfo, totalStep, NUM_FIVE, DOING)
             }
-            AtomStatusEnum.AUDIT_REJECT.status -> {
+            AtomStatusEnum.CODECC_FAIL.status -> {
                 storeCommonService.setProcessInfo(processInfo, totalStep, NUM_FIVE, FAIL)
             }
+            AtomStatusEnum.AUDITING.status -> {
+                storeCommonService.setProcessInfo(processInfo, totalStep, NUM_SIX, DOING)
+            }
+            AtomStatusEnum.AUDIT_REJECT.status -> {
+                storeCommonService.setProcessInfo(processInfo, totalStep, NUM_SIX, FAIL)
+            }
             AtomStatusEnum.RELEASED.status -> {
-                val currStep = if (isNormalUpgrade) NUM_FIVE else NUM_SIX
+                val currStep = if (isNormalUpgrade) NUM_SIX else NUM_SEVEN
                 storeCommonService.setProcessInfo(processInfo, totalStep, currStep, SUCCESS)
             }
         }
         return processInfo
+    }
+
+    override fun getPreValidatePassTestStatus(): Byte {
+        return AtomStatusEnum.CODECCING.status.toByte()
+    }
+
+    override fun doPassTestPreOperation(atomId: String, atomStatus: Byte, userId: String) {
+        marketAtomDao.setAtomStatusById(dslContext, atomId, atomStatus, userId, "")
+    }
+
+    override fun getAfterValidatePassTestStatus(validateFlag: Boolean, isNormalUpgrade: Boolean): Byte {
+        return if (!validateFlag) {
+            AtomStatusEnum.CODECC_FAIL.status.toByte()
+        } else {
+            if (isNormalUpgrade) AtomStatusEnum.RELEASED.status.toByte() else AtomStatusEnum.AUDITING.status.toByte()
+        }
+    }
+
+    override fun validateAtomPassTestCondition(userId: String, atomId: String): Boolean {
+        // 获取当次构建对应的commitId
+        val storeType = StoreTypeEnum.ATOM.name
+        var commitId = redisOperation.get("$STORE_REPO_COMMIT_KEY_PREFIX:$storeType:$atomId")
+        val atomRecord = atomDao.getPipelineAtom(dslContext, atomId)!!
+        val repoProjectName = "$pluginNameSpaceName/${atomRecord.atomCode}"
+        // 如果缓存中的commitId和repoProjectName为空，则通过接口获取
+        if (commitId == null) {
+            val getRepoRecentCommitInfoResult =
+                client.get(ServiceGitRepositoryResource::class).getRepoRecentCommitInfo(
+                    userId = userId,
+                    repoId = atomRecord.repositoryHashId,
+                    sha = "master",
+                    tokenType = TokenTypeEnum.PRIVATE_KEY
+                )
+            if (getRepoRecentCommitInfoResult.isNotOk()) {
+                throw ErrorCodeException(
+                    errorCode = getRepoRecentCommitInfoResult.status.toString(),
+                    defaultMessage = getRepoRecentCommitInfoResult.message
+                )
+            }
+            val gitCommit = getRepoRecentCommitInfoResult.data!!
+            commitId = gitCommit.id
+            redisOperation.set(
+                key = "$STORE_REPO_COMMIT_KEY_PREFIX:$storeType:$atomId",
+                value = commitId,
+                expiredInSecond = 259200
+            )
+        }
+        return handleAtomCodeccValidateStatus(repoProjectName, commitId)
+    }
+
+    private fun handleAtomCodeccValidateStatus(repoProjectName: String, commitId: String?): Boolean {
+        val startTime = System.currentTimeMillis()
+        var validateFlag = false
+        loop@ while (true) {
+            // 睡眠3秒再轮询去查扫描结果信息
+            Thread.sleep(3000)
+            val codeccMeasureInfoResult = client.get(ServiceCodeccResource::class).getCodeccMeasureInfo(
+                repoProjectName = repoProjectName,
+                commitId = commitId
+            )
+            logger.info("handleAtomCodeccValidateStatus codeccMeasureInfoResult: $codeccMeasureInfoResult")
+            val codeccMeasureInfo = codeccMeasureInfoResult.data
+            val status = codeccMeasureInfo?.status
+            if (codeccMeasureInfoResult.isNotOk() || codeccMeasureInfo == null || status == null) break@loop
+            if (status != 3) {
+                if (status == 0) {
+                    val codeStyleScore = codeccMeasureInfo.codeStyleScore
+                    val codeSecurityScore = codeccMeasureInfo.codeSecurityScore
+                    val codeMeasureScore = codeccMeasureInfo.codeMeasureScore
+                    if (codeStyleScore != null && codeSecurityScore != null && codeMeasureScore != null) {
+                        val storeType = StoreTypeEnum.ATOM.name
+                        val codeStyleQualifiedScore = txStoreCodeccService.getQualifiedScore(storeType, "codeStyle")
+                        val codeSecurityQualifiedScore =
+                            txStoreCodeccService.getQualifiedScore(storeType, "codeSecurity")
+                        val codeMeasureQualifiedScore = txStoreCodeccService.getQualifiedScore(storeType, "codeMeasure")
+                        // 判断插件代码库的扫描分数是否合格
+                        if (codeStyleScore > codeStyleQualifiedScore && codeSecurityScore > codeSecurityQualifiedScore && codeMeasureScore > codeMeasureQualifiedScore)
+                            validateFlag = true
+                    }
+                }
+                break@loop
+            } else {
+                // 轮询超时则直接返回校验失败
+                if ((System.currentTimeMillis() - startTime) > 10 * 60 * 1000) {
+                    break@loop
+                }
+            }
+        }
+        return validateFlag
     }
 
     override fun rebuild(projectCode: String, userId: String, atomId: String): Result<Boolean> {
@@ -338,10 +451,6 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
         return Result(true)
     }
 
-    override fun getPassTestStatus(isNormalUpgrade: Boolean): Byte {
-        return if (isNormalUpgrade) AtomStatusEnum.RELEASED.status.toByte() else AtomStatusEnum.AUDITING.status.toByte()
-    }
-
     /**
      * 初始化插件版本进度
      */
@@ -351,11 +460,12 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
         processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(COMMIT), COMMIT, NUM_TWO, UNDO))
         processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(BUILD), BUILD, NUM_THREE, UNDO))
         processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(TEST), TEST, NUM_FOUR, UNDO))
+        processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(CODECC), CODECC, NUM_FIVE, UNDO))
         if (isNormalUpgrade) {
-            processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(END), END, NUM_FIVE, UNDO))
-        } else {
-            processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(APPROVE), APPROVE, NUM_FIVE, UNDO))
             processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(END), END, NUM_SIX, UNDO))
+        } else {
+            processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(APPROVE), APPROVE, NUM_SIX, UNDO))
+            processInfo.add(ReleaseProcessItem(MessageCodeUtil.getCodeLanMessage(END), END, NUM_SEVEN, UNDO))
         }
         return processInfo
     }
@@ -368,30 +478,15 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
             context,
             atomCode,
             StoreTypeEnum.ATOM.type.toByte()
-        ) // 查找新增插件时关联的项目
+        )!! // 查找新增插件时关联的项目
+        val repositoryHashId = atomRecord.repositoryHashId
+        handleCodeccTask(userId, repositoryHashId, atomCode, atomId)
         val buildInfo = marketAtomBuildInfoDao.getAtomBuildInfo(context, atomId)
         logger.info("the buildInfo is:$buildInfo")
         val script = buildInfo.value1()
         val language = buildInfo.value3()
         if (null == atomPipelineRelRecord) {
             // 为用户初始化构建流水线并触发执行
-            val profile = SpringContextUtil.getBean(Profile::class.java)
-            if (!profile.isDev()) {
-                // dev环境暂不支持codecc，无需安装规则集
-                val checkerSetConfig = businessConfigDao.get(context, StoreTypeEnum.ATOM.name, "${language}Codecc", "CHECKER_SET")
-                val checkerSetIds = checkerSetConfig?.configValue?.split(",")
-                checkerSetIds?.forEach { checkerSetId ->
-                    val installCheckerSetResult = client.get(ServiceCodeccResource::class).installCheckerSet(
-                        projectId = projectCode!!,
-                        userId = userId,
-                        type = "PROJECT",
-                        checkerSetId = checkerSetId
-                    )
-                    if (installCheckerSetResult.isNotOk() || installCheckerSetResult.data == false) {
-                        throw ErrorCodeException(errorCode = installCheckerSetResult.status.toString(), defaultMessage = installCheckerSetResult.message)
-                    }
-                }
-            }
             val version = atomRecord.version
             val atomBaseInfo = AtomBaseInfo(
                 atomId = atomId,
@@ -421,7 +516,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
                 atomBaseInfo = atomBaseInfo
             )
             val atomMarketInitPipelineResp = client.get(ServicePipelineInitResource::class)
-                .initAtomMarketPipeline(userId, projectCode!!, atomMarketInitPipelineReq).data
+                .initAtomMarketPipeline(userId, projectCode, atomMarketInitPipelineReq).data
             logger.info("the atomMarketInitPipelineResp is:$atomMarketInitPipelineResp")
             if (null != atomMarketInitPipelineResp) {
                 storePipelineRelDao.add(context, atomCode, StoreTypeEnum.ATOM, atomMarketInitPipelineResp.pipelineId)
@@ -447,7 +542,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
             startParams["language"] = language
             startParams["script"] = script
             val buildIdObj = client.get(ServiceBuildResource::class).manualStartup(
-                userId, projectCode!!, atomPipelineRelRecord.pipelineId, startParams,
+                userId, projectCode, atomPipelineRelRecord.pipelineId, startParams,
                 ChannelCode.AM
             ).data
             logger.info("the buildIdObj is:$buildIdObj")
@@ -473,6 +568,61 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
             storeWebsocketService.sendWebsocketMessage(userId, atomId)
         }
         return true
+    }
+
+    private fun handleCodeccTask(
+        userId: String,
+        repositoryHashId: String,
+        atomCode: String,
+        atomId: String
+    ) {
+        // 获取插件代码库最新提交记录
+        val getRepoRecentCommitInfoResult = client.get(ServiceGitRepositoryResource::class).getRepoRecentCommitInfo(
+            userId = userId,
+            repoId = repositoryHashId,
+            sha = "master",
+            tokenType = TokenTypeEnum.PRIVATE_KEY
+        )
+        if (getRepoRecentCommitInfoResult.isNotOk()) {
+            throw ErrorCodeException(
+                errorCode = getRepoRecentCommitInfoResult.status.toString(),
+                defaultMessage = getRepoRecentCommitInfoResult.message
+            )
+        }
+        val gitCommit = getRepoRecentCommitInfoResult.data!!
+        val commitId = gitCommit.id
+        // 判断该commitId是否被正常触发了代码扫描
+        val repoProjectName = "$pluginNameSpaceName/$atomCode"
+        val taskStatusInfoResult = client.get(ServiceCodeccResource::class).getCodeccTaskStatusInfo(
+            repoProjectName = repoProjectName,
+            commitId = commitId
+        )
+        if (taskStatusInfoResult.isNotOk()) {
+            throw ErrorCodeException(
+                errorCode = taskStatusInfoResult.status.toString(),
+                defaultMessage = taskStatusInfoResult.message
+            )
+        }
+        val taskStatus = taskStatusInfoResult.data
+        if (taskStatus != 0 && taskStatus != 3) {
+            // 如果代码扫描任务没有被触发或者失败则调接口触发
+            val startCodeccTaskResult = client.get(ServiceCodeccResource::class).startCodeccTask(
+                repoProjectName = repoProjectName,
+                commitId = commitId
+            )
+            if (startCodeccTaskResult.isNotOk() || startCodeccTaskResult.data.isNullOrBlank()) {
+                throw ErrorCodeException(
+                    errorCode = startCodeccTaskResult.status.toString(),
+                    defaultMessage = startCodeccTaskResult.message
+                )
+            }
+        }
+        // 把代码提交ID存入redis
+        redisOperation.set(
+            key = "$STORE_REPO_COMMIT_KEY_PREFIX:${StoreTypeEnum.ATOM.name}:$atomId",
+            value = commitId,
+            expiredInSecond = 259200
+        )
     }
 
     /**
@@ -535,8 +685,12 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
             recordStatus != AtomStatusEnum.BUILDING.status.toByte()
         ) {
             validateFlag = false
-        } else if (status == AtomStatusEnum.AUDITING.status.toByte() &&
+        } else if (status == AtomStatusEnum.CODECCING.status.toByte() &&
             recordStatus != AtomStatusEnum.TESTING.status.toByte()
+        ) {
+            validateFlag = false
+        } else if (status == AtomStatusEnum.AUDITING.status.toByte() &&
+            recordStatus != AtomStatusEnum.CODECCING.status.toByte()
         ) {
             validateFlag = false
         } else if (status == AtomStatusEnum.AUDIT_REJECT.status.toByte() &&

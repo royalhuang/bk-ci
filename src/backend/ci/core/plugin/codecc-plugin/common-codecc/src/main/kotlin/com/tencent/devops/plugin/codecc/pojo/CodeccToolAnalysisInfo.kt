@@ -24,10 +24,25 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-dependencies {
-    compile project(":core:store:api-store")
-    compile project(":core:log:api-log")
-    compile project(":core:plugin:codecc-plugin:common-codecc")
-}
+package com.tencent.devops.plugin.codecc.pojo
 
-apply from: "$rootDir/task_deploy_to_maven.gradle"
+import io.swagger.annotations.ApiModel
+import io.swagger.annotations.ApiModelProperty
+
+@ApiModel("codecc工具分析信息")
+data class CodeccToolAnalysisInfo(
+    @ApiModelProperty("工具名称", required = true)
+    val toolName: String,
+    @ApiModelProperty("工具展示名称", required = true)
+    val displayName: String,
+    @ApiModelProperty("工具类型", required = true)
+    val type: String,
+    @ApiModelProperty("分析耗时", required = true)
+    val elapseTime: Long,
+    @ApiModelProperty("第几次构建", required = true)
+    val buildNum: Int,
+    @ApiModelProperty("工具类型，用来拼接URL", required = false)
+    val pattern: String?,
+    @ApiModelProperty("告警总数", required = true)
+    val defectCount: Int
+)

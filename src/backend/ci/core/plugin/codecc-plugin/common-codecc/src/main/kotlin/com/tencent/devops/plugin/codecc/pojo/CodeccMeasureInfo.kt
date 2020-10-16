@@ -24,10 +24,35 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-dependencies {
-    compile project(":core:store:api-store")
-    compile project(":core:log:api-log")
-    compile project(":core:plugin:codecc-plugin:common-codecc")
-}
+package com.tencent.devops.plugin.codecc.pojo
 
-apply from: "$rootDir/task_deploy_to_maven.gradle"
+import io.swagger.annotations.ApiModel
+import io.swagger.annotations.ApiModelProperty
+
+@ApiModel("codecc度量信息")
+data class CodeccMeasureInfo(
+    @ApiModelProperty("项目ID", required = true)
+    val projectId: String,
+    @ApiModelProperty("任务ID", required = false)
+    val taskId: Long?,
+    @ApiModelProperty("代码库提交ID", required = false)
+    val commitId: String?,
+    @ApiModelProperty("代码库url地址", required = false)
+    val repoUrl: String?,
+    @ApiModelProperty("codecc扫描详情url地址", required = false)
+    val codeccUrl: String?,
+    @ApiModelProperty("规范得分", required = false)
+    val codeStyleScore: Double?,
+    @ApiModelProperty("安全得分", required = false)
+    val codeSecurityScore: Double?,
+    @ApiModelProperty("度量得分", required = false)
+    val codeMeasureScore: Double?,
+    @ApiModelProperty("最近一次分析触发时间", required = false)
+    val lastAnalysisTime: Long?,
+    @ApiModelProperty("任务状态(失败：1， 执行中: 3， 成功：0, 未执行：2)", required = false)
+    val status: Int?,
+    @ApiModelProperty("工具执行信息", required = false)
+    val lastAnalysisResultList: List<CodeccToolAnalysisInfo>?,
+    @ApiModelProperty("是否合格", required = false)
+    var qualifiedFlag: Boolean? = null
+)

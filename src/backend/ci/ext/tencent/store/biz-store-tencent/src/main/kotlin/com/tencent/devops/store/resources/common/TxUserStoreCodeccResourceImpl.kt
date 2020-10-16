@@ -24,10 +24,30 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-dependencies {
-    compile project(":core:store:api-store")
-    compile project(":core:log:api-log")
-    compile project(":core:plugin:codecc-plugin:common-codecc")
-}
+package com.tencent.devops.store.resources.common
 
-apply from: "$rootDir/task_deploy_to_maven.gradle"
+import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.web.RestResource
+import com.tencent.devops.plugin.codecc.pojo.CodeccMeasureInfo
+import com.tencent.devops.store.api.common.TxUserStoreCodeccResource
+import com.tencent.devops.store.service.common.TxStoreCodeccService
+import org.springframework.beans.factory.annotation.Autowired
+
+@RestResource
+class TxUserStoreCodeccResourceImpl @Autowired constructor(
+    private val txStoreCodeccService: TxStoreCodeccService
+) : TxUserStoreCodeccResource {
+
+    override fun getCodeccMeasureInfo(
+        userId: String,
+        storeType: String,
+        storeCode: String,
+        storeId: String?
+    ): Result<CodeccMeasureInfo?> {
+        return txStoreCodeccService.getCodeccMeasureInfo(userId, storeType, storeCode, storeId)
+    }
+
+    override fun startCodeccTask(userId: String, storeType: String, storeCode: String): Result<String?> {
+        return txStoreCodeccService.startCodeccTask(userId, storeType, storeCode)
+    }
+}

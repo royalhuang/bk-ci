@@ -38,13 +38,16 @@ import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.OkhttpUtils
 import com.tencent.devops.common.pipeline.pojo.element.agent.LinuxCodeCCScriptElement
 import com.tencent.devops.common.pipeline.pojo.element.agent.LinuxPaasCodeCCScriptElement
+import com.tencent.devops.plugin.codecc.pojo.CodeccMeasureInfo
 import com.tencent.devops.plugin.codecc.pojo.coverity.CodeccReport
 import com.tencent.devops.plugin.codecc.pojo.coverity.CoverityResult
 import okhttp3.MediaType
 import okhttp3.Request
 import okhttp3.RequestBody
+import org.apache.commons.compress.utils.Charsets
 import org.slf4j.LoggerFactory
 import java.net.URLEncoder
+import javax.ws.rs.HttpMethod
 
 open class CodeccApi constructor(
     private val codeccApiUrl: String,
@@ -62,6 +65,8 @@ open class CodeccApi constructor(
         private val logger = LoggerFactory.getLogger(CodeccApi::class.java)
         private const val USER_NAME_HEADER = "X-DEVOPS-UID"
         private const val DEVOPS_PROJECT_ID = "X-DEVOPS-PROJECT-ID"
+        private const val DEVOPS_TASK_ID = "X-DEVOPS-TASK-ID"
+        private const val COMMIT_ID = "commitId"
         private const val CONTENT_TYPE = "Content-Type"
         private const val CONTENT_TYPE_JSON = "application/json"
     }
@@ -351,6 +356,52 @@ open class CodeccApi constructor(
             path = "/ms/defect/api/service/checkerSet/$checkerSetId/relationships",
             headers = headers,
             method = "POST"
+        )
+        return objectMapper.readValue(result)
+    }
+
+    fun getCodeccMeasureInfo(repoProjectName: String, commitId: String? = null): Result<CodeccMeasureInfo?> {
+        val encodeProjectName = URLEncoder.encode(repoProjectName, Charsets.UTF_8.name())
+        val headers = if (null != commitId) mapOf(COMMIT_ID to commitId) else null
+        val result = taskExecution(
+            body = mapOf(),
+            headers = headers,
+            path = "/ms/defect/api/service/defect/repo/$encodeProjectName/measurement",
+            method = HttpMethod.GET
+        )
+        return objectMapper.readValue(result)
+    }
+
+    fun getCodeccTaskStatusInfo(repoProjectName: String, commitId: String? = null): Result<Int> {
+        val encodeProjectName = URLEncoder.encode(repoProjectName, Charsets.UTF_8.name())
+        val headers = if (null != commitId) mapOf(COMMIT_ID to commitId) else null
+        val result = taskExecution(
+            body = mapOf(),
+            headers = headers,
+            path = "/ms/task/api/service/task/repo/$encodeProjectName/status",
+            method = HttpMethod.GET
+        )
+        return objectMapper.readValue(result)
+    }
+
+    fun startCodeccTask(repoProjectName: String, commitId: String? = null): Result<String> {
+        val encodeProjectName = URLEncoder.encode(repoProjectName, Charsets.UTF_8.name())
+        val headers = if (null != commitId) mapOf(COMMIT_ID to commitId) else null
+        val result = taskExecution(
+            body = mapOf(),
+            path = "/ms/task/api/service/openScan/trigger/repo/$encodeProjectName",
+            headers = headers,
+            method = HttpMethod.POST
+        )
+        return objectMapper.readValue(result)
+    }
+
+    fun createCodeccPipeline(repoProjectName: String): Result<Boolean> {
+        val encodeProjectName = URLEncoder.encode(repoProjectName, Charsets.UTF_8.name())
+        val result = taskExecution(
+            body = mapOf(),
+            path = "/ms/task/api/service/task/repo/$encodeProjectName/create",
+            method = HttpMethod.POST
         )
         return objectMapper.readValue(result)
     }
