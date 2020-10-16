@@ -361,6 +361,7 @@ open class CodeccApi constructor(
     }
 
     fun getCodeccMeasureInfo(repoProjectName: String, commitId: String? = null): Result<CodeccMeasureInfo?> {
+        logger.info("getCodeccMeasureInfo repoProjectName:$repoProjectName,commitId:$commitId")
         val encodeProjectName = URLEncoder.encode(repoProjectName, Charsets.UTF_8.name())
         val headers = if (null != commitId) mapOf(COMMIT_ID to commitId) else null
         val result = taskExecution(
