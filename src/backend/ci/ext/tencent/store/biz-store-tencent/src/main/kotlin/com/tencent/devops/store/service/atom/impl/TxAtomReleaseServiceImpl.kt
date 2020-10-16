@@ -85,6 +85,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.cloud.context.config.annotation.RefreshScope
 import org.springframework.stereotype.Service
+import java.net.URLEncoder
 
 @Service
 @RefreshScope
@@ -172,7 +173,8 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
             return MessageCodeUtil.generateResponseDataObject(StoreMessageCode.USER_CREATE_REPOSITORY_FAIL)
         }
         // 创建codecc扫描流水线
-        val createCodeccPipelineResult = client.get(ServiceCodeccResource::class).createCodeccPipeline(repositoryInfo.aliasName)
+        val repoProjectName = URLEncoder.encode(repositoryInfo.aliasName, Charsets.UTF_8.name())
+        val createCodeccPipelineResult = client.get(ServiceCodeccResource::class).createCodeccPipeline(repoProjectName)
         logger.info("createCodeccPipelineResult is :$createCodeccPipelineResult")
         val createFlag = createCodeccPipelineResult.data
         if (createCodeccPipelineResult.isNotOk() || createFlag != true) {
@@ -349,7 +351,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
             // 睡眠3秒再轮询去查扫描结果信息
             Thread.sleep(3000)
             val codeccMeasureInfoResult = client.get(ServiceCodeccResource::class).getCodeccMeasureInfo(
-                repoProjectName = repoProjectName,
+                repoProjectName = URLEncoder.encode(repoProjectName, Charsets.UTF_8.name()),
                 commitId = commitId
             )
             logger.info("handleAtomCodeccValidateStatus codeccMeasureInfoResult: $codeccMeasureInfoResult")
@@ -594,7 +596,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
         // 判断该commitId是否被正常触发了代码扫描
         val repoProjectName = "$pluginNameSpaceName/$atomCode"
         val taskStatusInfoResult = client.get(ServiceCodeccResource::class).getCodeccTaskStatusInfo(
-            repoProjectName = repoProjectName,
+            repoProjectName = URLEncoder.encode(repoProjectName, Charsets.UTF_8.name()),
             commitId = commitId
         )
         if (taskStatusInfoResult.isNotOk()) {
@@ -607,7 +609,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
         if (taskStatus != 0 && taskStatus != 3) {
             // 如果代码扫描任务没有被触发或者失败则调接口触发
             val startCodeccTaskResult = client.get(ServiceCodeccResource::class).startCodeccTask(
-                repoProjectName = repoProjectName,
+                repoProjectName = URLEncoder.encode(repoProjectName, Charsets.UTF_8.name()),
                 commitId = commitId
             )
             if (startCodeccTaskResult.isNotOk() || startCodeccTaskResult.data.isNullOrBlank()) {
