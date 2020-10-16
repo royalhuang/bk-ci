@@ -570,6 +570,9 @@ class AtomDao : AtomBaseDao() {
             if (null != atomUpdateRequest.logoUrl) {
                 baseStep.set(LOGO_URL, atomUpdateRequest.logoUrl)
             }
+            if (null != atomUpdateRequest.iconData) {
+                baseStep.set(ICON, atomUpdateRequest.iconData)
+            }
             if (null != atomUpdateRequest.publisher) {
                 baseStep.set(PUBLISHER, atomUpdateRequest.publisher)
             }

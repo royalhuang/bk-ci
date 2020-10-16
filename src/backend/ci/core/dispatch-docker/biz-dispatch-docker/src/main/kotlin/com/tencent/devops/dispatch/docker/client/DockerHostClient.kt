@@ -30,8 +30,6 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.tencent.devops.common.api.pojo.ErrorType
 import com.tencent.devops.common.api.pojo.Zone
-import com.tencent.devops.common.api.util.ApiUtil
-import com.tencent.devops.common.api.util.HashUtil
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.OkhttpUtils
 import com.tencent.devops.common.client.Client
@@ -48,11 +46,9 @@ import com.tencent.devops.dispatch.docker.dao.PipelineDockerIPInfoDao
 import com.tencent.devops.dispatch.docker.dao.PipelineDockerTaskSimpleDao
 import com.tencent.devops.dispatch.docker.exception.DockerServiceException
 import com.tencent.devops.dispatch.docker.pojo.DockerHostBuildInfo
-import com.tencent.devops.dispatch.pojo.enums.PipelineTaskStatus
-import com.tencent.devops.dispatch.pojo.redis.RedisBuild
 import com.tencent.devops.dispatch.docker.utils.CommonUtils
 import com.tencent.devops.dispatch.docker.utils.DockerHostUtils
-import com.tencent.devops.dispatch.utils.redis.RedisUtils
+import com.tencent.devops.dispatch.pojo.enums.PipelineTaskStatus
 import com.tencent.devops.store.pojo.image.enums.ImageRDTypeEnum
 import com.tencent.devops.ticket.pojo.enums.CredentialType
 import okhttp3.MediaType
@@ -70,7 +66,6 @@ class DockerHostClient @Autowired constructor(
     private val pipelineDockerIPInfoDao: PipelineDockerIPInfoDao,
     private val pipelineDockerTaskSimpleDao: PipelineDockerTaskSimpleDao,
     private val dockerHostUtils: DockerHostUtils,
-    private val redisUtils: RedisUtils,
     private val redisOperation: RedisOperation,
     private val client: Client,
     private val dslContext: DSLContext,
@@ -88,14 +83,13 @@ class DockerHostClient @Autowired constructor(
         poolNo: Int,
         driftIpInfo: String
     ) {
-        val secretKey = ApiUtil.randomSecretKey()
-        val id = pipelineDockerBuildDao.startBuild(
+        pipelineDockerBuildDao.startBuild(
             dslContext = dslContext,
             projectId = dispatchMessage.projectId,
             pipelineId = dispatchMessage.pipelineId,
             buildId = dispatchMessage.buildId,
             vmSeqId = dispatchMessage.vmSeqId.toInt(),
-            secretKey = secretKey,
+            secretKey = dispatchMessage.secretKey,
             status = PipelineTaskStatus.RUNNING,
             zone = if (null == dispatchMessage.zone) {
                 Zone.SHENZHEN.name
@@ -105,22 +99,9 @@ class DockerHostClient @Autowired constructor(
             dockerIp = dockerIp,
             poolNo = poolNo
         )
-        val agentId = HashUtil.encodeLongId(id)
-        redisUtils.setDockerBuild(
-            id, secretKey,
-            RedisBuild(
-                vmName = agentId,
-                projectId = dispatchMessage.projectId,
-                pipelineId = dispatchMessage.pipelineId,
-                buildId = dispatchMessage.buildId,
-                vmSeqId = dispatchMessage.vmSeqId,
-                channelCode = dispatchMessage.channelCode,
-                zone = dispatchMessage.zone,
-                atoms = dispatchMessage.atoms
-            )
-        )
-        logger.info("secretKey: $secretKey")
-        logger.info("agentId: $agentId")
+
+        logger.info("secretKey: ${dispatchMessage.secretKey}")
+        logger.info("agentId: ${dispatchMessage.id}")
         val dispatchType = dispatchMessage.dispatchType as DockerDispatchType
         logger.info("dockerHostBuild:(${dispatchMessage.userId},${dispatchMessage.projectId},${dispatchMessage.pipelineId},${dispatchMessage.buildId},${dispatchType.imageType?.name},${dispatchType.imageCode},${dispatchType.imageVersion},${dispatchType.credentialId},${dispatchType.credentialProject})")
 
@@ -163,11 +144,11 @@ class DockerHostClient @Autowired constructor(
 
         val requestBody = DockerHostBuildInfo(
             projectId = dispatchMessage.projectId,
-            agentId = agentId,
+            agentId = dispatchMessage.id,
             pipelineId = dispatchMessage.pipelineId,
             buildId = dispatchMessage.buildId,
             vmSeqId = Integer.valueOf(dispatchMessage.vmSeqId),
-            secretKey = secretKey,
+            secretKey = dispatchMessage.secretKey,
             status = PipelineTaskStatus.RUNNING.status,
             imageName = dockerImage!!,
             containerId = "",

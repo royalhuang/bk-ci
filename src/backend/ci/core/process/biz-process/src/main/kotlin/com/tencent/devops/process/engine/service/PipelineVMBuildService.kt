@@ -451,7 +451,8 @@ class PipelineVMBuildService @Autowired(required = false) constructor(
             return BuildTask(buildId, vmSeqId, BuildTaskStatus.WAIT)
         }
 
-        val extVarMap = buildExtService.buildExt(task)
+        // 构造扩展变量
+        val extMap = buildExtService.buildExt(task)
 
         // 认领任务
         pipelineRuntimeService.claimBuildTask(buildId, task, userId)
@@ -460,7 +461,8 @@ class PipelineVMBuildService @Autowired(required = false) constructor(
             PIPELINE_VMSEQ_ID to vmSeqId,
             PIPELINE_ELEMENT_ID to task.taskId
         )
-        buildVariable.putAll(extVarMap)
+
+        buildVariable.putAll(extMap)
 
         PipelineVarUtil.fillOldVar(buildVariable)
 

@@ -50,10 +50,13 @@ data class JobDetail(
  *             container: mirrors.tencent.com/tlinux2.2:latest
  *             credential:
  *               credentialId: xxx
+ *               user: xxx
+ *               password: xxx
  *             systemVersion: 10.15.6 | win10
  *             xcodeVersion: xcode10
  *             visualStudioVersion: 2019 | 2020
  *             agentId: xxx
+ *             agentName: xxx
  *             workspace: xxx
  *             env:
  *               jdk: 1.8.0_161

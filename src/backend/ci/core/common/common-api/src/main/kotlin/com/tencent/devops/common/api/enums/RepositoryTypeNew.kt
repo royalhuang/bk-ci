@@ -24,10 +24,10 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.agent
+package com.tencent.devops.common.api.enums
 
-const val AGENT_VERSION = 12.8
-
-fun main(argv: Array<String>) {
-    println(AGENT_VERSION)
+enum class RepositoryTypeNew {
+    ID,
+    NAME,
+    URL
 }
