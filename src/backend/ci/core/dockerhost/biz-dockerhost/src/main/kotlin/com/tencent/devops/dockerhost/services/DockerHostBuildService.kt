@@ -40,8 +40,10 @@ import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.Ports
 import com.github.dockerjava.api.model.PullResponseItem
 import com.github.dockerjava.api.model.PushResponseItem
+import com.github.dockerjava.api.model.Statistics
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
+import com.github.dockerjava.core.InvocationBuilder
 import com.github.dockerjava.core.command.LogContainerResultCallback
 import com.github.dockerjava.core.command.PullImageResultCallback
 import com.github.dockerjava.core.command.PushImageResultCallback
@@ -50,6 +52,7 @@ import com.github.dockerjava.okhttp.OkDockerHttpClient
 import com.github.dockerjava.transport.DockerHttpClient
 import com.tencent.devops.common.api.constant.CommonMessageCode
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.pipeline.type.docker.ImageType
 import com.tencent.devops.common.web.mq.alert.AlertLevel
 import com.tencent.devops.dispatch.pojo.DockerHostBuildInfo
@@ -691,6 +694,44 @@ class DockerHostBuildService(
             logger.error("[$containerId]| getDockerRunExitCode error.", e)
             Constants.DOCKER_EXIST_CODE
         }
+    }
+
+    fun checkContainerStats() {
+        val containerInfo = httpLongDockerCli.listContainersCmd().withStatusFilter(setOf("running")).exec()
+        for (container in containerInfo) {
+            val statistics = getContainerStats(container.id)
+            if (statistics != null) {
+                val systemCpuUsage = statistics.cpuStats.systemCpuUsage ?: 0
+                val cpuUsage = statistics.cpuStats.cpuUsage!!.totalUsage ?: 0
+                val preSystemCpuUsage = statistics.preCpuStats.systemCpuUsage ?: 0
+                val preCpuUsage = statistics.preCpuStats.cpuUsage!!.totalUsage ?: 0
+                val cpuUsagePer = ((cpuUsage - preCpuUsage) * 100) / (systemCpuUsage - preSystemCpuUsage)
+                logger.info("containerId: ${container.id} | checkContainerStats cpuUsagePer: $cpuUsagePer")
+                if (cpuUsagePer > 20) {
+                    resetContainer(container.id)
+                }
+            }
+        }
+    }
+
+    fun getContainerStats(containerId: String): Statistics? {
+        val asyncResultCallback = InvocationBuilder.AsyncResultCallback<Statistics>()
+        httpDockerCli.statsCmd(containerId).withNoStream(true).exec(asyncResultCallback)
+        return try {
+            val stats = asyncResultCallback.awaitResult()
+            asyncResultCallback.close()
+            stats
+        } catch (e: Exception) {
+            logger.error("containerId: $containerId get containerStats error.", e)
+            null
+        }
+    }
+
+    fun resetContainer(containerId: String) {
+        logger.info("<--------------------- resetContainer $containerId --------------------->")
+        httpDockerCli.pauseContainerCmd(containerId)
+        httpDockerCli.updateContainerCmd(containerId).withMemory(32768 * 1024).withCpuShares(1)
+        httpDockerCli.unpauseContainerCmd(containerId)
     }
 
     fun clearContainers() {
