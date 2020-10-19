@@ -732,7 +732,7 @@ class DockerHostBuildService(
         httpDockerCli.pauseContainerCmd(containerId).exec()
         logger.info("<--------------------- pauseContainer $containerId --------------------->")
         val containerInfo = httpDockerCli.inspectContainerCmd(containerId).exec()
-        logger.info("<--------------------- inspectContainer $containerId $containerInfo --------------------->")
+        logger.info("<--------------------- inspectContainer $containerId ${containerInfo.state.status} --------------------->")
         httpDockerCli.updateContainerCmd(containerId).withMemory(32768 * 1024).withMemorySwap(32768 * 1524).withCpuPeriod(10000).withCpuQuota(10000).exec()
         logger.info("<--------------------- updateContainer $containerId --------------------->")
         httpDockerCli.unpauseContainerCmd(containerId).exec()
