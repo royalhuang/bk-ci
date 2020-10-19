@@ -41,7 +41,6 @@ import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
 
-
 @Api(tags = ["USER_ARTIFACTORY"], description = "仓库-文件管理")
 @Path("/user/artifactories")
 @Produces(MediaType.APPLICATION_JSON)
