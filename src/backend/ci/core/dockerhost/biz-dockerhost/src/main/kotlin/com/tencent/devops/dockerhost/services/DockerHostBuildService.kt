@@ -707,10 +707,12 @@ class DockerHostBuildService(
                 val preCpuUsage = statistics.preCpuStats.cpuUsage!!.totalUsage ?: 0
                 val cpuUsagePer = ((cpuUsage - preCpuUsage) * 100) / (systemCpuUsage - preSystemCpuUsage)
 
-                val memUsage = statistics.memoryStats.usage
-                logger.info("containerId: ${container.id} | checkContainerStats cpuUsagePer: $cpuUsagePer, memUsage: ${JsonUtil.toJson(statistics)}")
-                if (cpuUsagePer > 10) {
-                    resetContainer(container.id)
+                if (statistics.memoryStats != null && statistics.memoryStats.usage != null && statistics.memoryStats.limit != null) {
+                    logger.info("containerId: ${container.id} | checkContainerStats cpuUsagePer: $cpuUsagePer, memUsage: ${JsonUtil.toJson(statistics)}")
+                    val memUsage = statistics.memoryStats.usage!! * 100 / statistics.memoryStats.limit!!
+                    if (memUsage > 5) {
+                        resetContainer(container.id)
+                    }
                 }
             }
         }
