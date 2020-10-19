@@ -729,11 +729,11 @@ class DockerHostBuildService(
 
     fun resetContainer(containerId: String) {
         logger.info("<--------------------- resetContainer $containerId --------------------->")
-        httpDockerCli.pauseContainerCmd(containerId)
+        httpDockerCli.pauseContainerCmd(containerId).exec()
         logger.info("<--------------------- pauseContainer $containerId --------------------->")
-        httpDockerCli.updateContainerCmd(containerId).withMemory(32768 * 1024).withMemorySwap(-1).withCpuPeriod(10000).withCpuQuota(10000)
+        httpDockerCli.updateContainerCmd(containerId).withMemory(32768 * 1024).withMemorySwap(-1).withCpuPeriod(10000).withCpuQuota(10000).exec()
         logger.info("<--------------------- updateContainer $containerId --------------------->")
-        httpDockerCli.unpauseContainerCmd(containerId)
+        httpDockerCli.unpauseContainerCmd(containerId).exec()
         logger.info("<--------------------- unpauseContainer $containerId --------------------->")
     }
 
