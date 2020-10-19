@@ -708,9 +708,9 @@ class DockerHostBuildService(
                 val cpuUsagePer = ((cpuUsage - preCpuUsage) * 100) / (systemCpuUsage - preSystemCpuUsage)
 
                 if (statistics.memoryStats != null && statistics.memoryStats.usage != null && statistics.memoryStats.limit != null) {
-                    logger.info("containerId: ${container.id} | checkContainerStats cpuUsagePer: $cpuUsagePer, memUsage: ${JsonUtil.toJson(statistics)}")
                     val memUsage = statistics.memoryStats.usage!! * 100 / statistics.memoryStats.limit!!
-                    if (memUsage > 5) {
+                    logger.info("containerId: ${container.id} | checkContainerStats cpuUsagePer: $cpuUsagePer, memUsage: $memUsage")
+                    if (memUsage > 5 || cpuUsagePer > 10) {
                         resetContainer(container.id)
                     }
                 }
@@ -737,7 +737,7 @@ class DockerHostBuildService(
         logger.info("<--------------------- pauseContainer $containerId --------------------->")
         val containerInfo = httpDockerCli.inspectContainerCmd(containerId).exec()
         logger.info("<--------------------- inspectContainer $containerId ${containerInfo.state.status} --------------------->")
-        httpDockerCli.updateContainerCmd(containerId).withMemory(20 * 1024 * 1024 * 1024L).withMemorySwap(-1).withMemoryReservation(1024 * 1024 * 1024).withCpuPeriod(10000).withCpuQuota(10000).exec()
+        httpDockerCli.updateContainerCmd(containerId).withMemoryReservation(1024 * 1024 * 1024).withCpuPeriod(10000).withCpuQuota(10000).exec()
         logger.info("<--------------------- updateContainer $containerId --------------------->")
         httpDockerCli.unpauseContainerCmd(containerId).exec()
         logger.info("<--------------------- unpauseContainer $containerId --------------------->")
