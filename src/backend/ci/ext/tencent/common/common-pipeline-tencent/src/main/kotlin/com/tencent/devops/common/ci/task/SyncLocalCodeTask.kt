@@ -24,28 +24,53 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.store.pojo
+package com.tencent.devops.common.ci.task
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.tencent.devops.store.pojo.enums.DescInputTypeEnum
+import com.tencent.devops.common.ci.CiBuildConfig
+import com.tencent.devops.common.pipeline.pojo.element.market.MarketBuildAtomElement
+import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class UpdateExtBaseInfo(
-    @ApiModelProperty("扩展服务Name")
-    val serviceName: String?,
-    @ApiModelProperty("扩展点")
-    val itemIds: Set<String>?,
-    @ApiModelProperty("标签")
-    val labels: List<String>?,
-    @ApiModelProperty("简介")
-    val summary: String? = null,
-    @ApiModelProperty("LOGO url")
-    val logoUrl: String?,
-    @ApiModelProperty("icon图标base64字符串", required = false)
-    val iconData: String?,
-    @ApiModelProperty("扩展服务描述")
-    val description: String? = null,
-    @ApiModelProperty("描述录入类型")
-    val descInputType: DescInputTypeEnum? = DescInputTypeEnum.MANUAL
-)
+/**
+ * SyncLocalCodeTask
+ */
+@ApiModel("同步本地代码")
+data class SyncLocalCodeTask(
+    @ApiModelProperty("displayName", required = false)
+    override var displayName: String?,
+    @ApiModelProperty("入参", required = true)
+    override var inputs: SyncLocalCodeInput?,
+    @ApiModelProperty("执行条件", required = true)
+    override val condition: String?
+) : AbstractTask(displayName, inputs, condition) {
+    companion object {
+        const val taskType = "syncLocalCode"
+        const val taskVersion = "@latest"
+    }
+
+    override fun covertToElement(config: CiBuildConfig): MarketBuildAtomElement {
+        val data = mapOf(
+            "input" to mapOf(
+                "agentId" to inputs!!.agentId,
+                "workspace" to inputs!!.workspace
+            )
+        )
+
+        return MarketBuildAtomElement(
+            displayName ?: "同步本地代码",
+            null,
+            null,
+            "syncAgentCode",
+            "3.*",
+            data
+        )
+    }
+}
+
+@ApiModel("同步本地代码入参")
+data class SyncLocalCodeInput(
+    @ApiModelProperty("agentId", required = true)
+    var agentId: String?,
+    @ApiModelProperty("工作目录", required = true)
+    var workspace: String?
+) : AbstractInput()
