@@ -708,8 +708,8 @@ class DockerHostBuildService(
                 val cpuUsagePer = ((cpuUsage - preCpuUsage) * 100) / (systemCpuUsage - preSystemCpuUsage)
 
                 val memUsage = statistics.memoryStats.usage
-                logger.info("containerId: ${container.id} | checkContainerStats cpuUsagePer: $cpuUsagePer, memUsage: ${statistics.memoryStats}")
-                if (cpuUsage > 10) {
+                logger.info("containerId: ${container.id} | checkContainerStats cpuUsagePer: $cpuUsagePer, memUsage: $statistics")
+                if (cpuUsagePer > 10) {
                     resetContainer(container.id)
                 }
             }
