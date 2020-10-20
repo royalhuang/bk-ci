@@ -83,7 +83,7 @@ class WebAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "server.undertow.accesslog", name = ["enabled"], havingValue = "true", matchIfMissing = false)
-    fun undertowServletWebServerFactory(@Value("server.undertow.accesslog.pattern:") pattern: String): UndertowEmbeddedServletContainerFactory? {
+    fun undertowServletWebServerFactory(@Value("\${server.undertow.accesslog.pattern:}") pattern: String): UndertowEmbeddedServletContainerFactory? {
         logger.info("undertowServletWebServerFactory|init|pattern=$pattern")
         val factory = UndertowEmbeddedServletContainerFactory()
         if (pattern.contains("%D") || pattern.contains("%T")) {
