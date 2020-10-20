@@ -173,7 +173,7 @@ class ApiFilter(
                     } else {
                         requestContext.headers.add(AUTH_HEADER_DEVOPS_USER_ID, username)
                     }
-                } else if (apiType == ApiType.APP) {
+                } else if (apiType == ApiType.USER) {
                     requestContext.abortWith(Response.status(Response.Status.BAD_REQUEST).entity("Request don't has user's access_token.").build())
                     return false
                 }
