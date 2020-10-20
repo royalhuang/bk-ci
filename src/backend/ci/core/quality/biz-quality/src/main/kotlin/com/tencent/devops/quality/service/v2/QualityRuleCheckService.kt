@@ -112,6 +112,7 @@ class QualityRuleCheckService @Autowired constructor(
     fun getMatchTemplateListByCache(projectId: String, templateId: String?): List<QualityRuleMatchTask> {
         if (templateId.isNullOrBlank()) return listOf()
         val cacheData = qualityCacheService.getCacheRuleListByTemplateId(projectId, templateId!!)
+        logger.info("getMatchTemplateListByCache |$projectId| $templateId| $cacheData")
         if (cacheData != null) {
             return cacheData
         }
