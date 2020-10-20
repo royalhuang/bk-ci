@@ -93,6 +93,7 @@ class QualityRuleCheckService @Autowired constructor(
 
     fun getMatchRuleListByCache(projectId: String, pipelineId: String): List<QualityRuleMatchTask> {
         val cacheData = qualityCacheService.getCacheRuleListByPipelineId(projectId, pipelineId)
+        logger.info("getMatchRuleListByCache |$projectId| $pipelineId| $cacheData")
         if (cacheData != null) {
             return cacheData
         }

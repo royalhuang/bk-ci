@@ -22,11 +22,13 @@ class QualityCacheService @Autowired constructor(
 
     fun getCacheRuleListByPipelineId(projectId: String, pipelineId: String): List<QualityRuleMatchTask>? {
         val redisData = redisOperation.get(buildPipelineRedisKey(projectId, pipelineId))
+        logger.info("getCacheRuleListByPipelineId |$projectId| $pipelineId| $redisData")
         return buildCacheData(redisData)
     }
 
     fun getCacheRuleListByTemplateId(projectId: String, templateId: String): List<QualityRuleMatchTask>? {
         val redisData = redisOperation.get(buildTemplateRedisKey(projectId, templateId))
+        logger.info("getCacheRuleListByTemplateId |$projectId| $templateId| $redisData")
         return buildCacheData(redisData)
     }
 
