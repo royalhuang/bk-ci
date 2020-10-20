@@ -48,7 +48,7 @@ class OpAppCodeGroupResourceImpl @Autowired constructor(
     }
 
     override fun updateAppCodeGroup(userName: String, appCodeGroupId: Long, appCodeGroup: AppCodeGroup): Result<Boolean> {
-        return Result(appCodeGroupService.up(userName, appCodeGroup))
+        return Result(appCodeGroupService.updateGroup(userName, appCodeGroupId, appCodeGroup))
     }
 
     override fun getAppCodeGroup(userName: String, appCodeGroupId: Long): Result<AppCodeGroupResponse?> {

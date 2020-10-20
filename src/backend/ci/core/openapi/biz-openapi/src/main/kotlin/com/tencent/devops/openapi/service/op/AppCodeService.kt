@@ -121,6 +121,7 @@ class AppCodeService(
             val appCodeGroupList = mutableListOf<AppCodeGroup>()
             appCodeGroupResponseList.forEach {
                 appCodeGroupList.add(AppCodeGroup(
+                        appCode = it.appCode,
                         bgId = it.bgId,
                         bgName = it.bgName,
                         deptId = it.deptId,

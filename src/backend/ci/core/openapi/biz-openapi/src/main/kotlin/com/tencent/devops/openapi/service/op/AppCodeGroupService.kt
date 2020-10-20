@@ -44,7 +44,7 @@ class AppCodeGroupService(
     private val dslContext: DSLContext,
     private val appCodeGroupDao: AppCodeGroupDao
 ) {
-    fun setGroup(userName: String, appCode: String, appCodeGroup: AppCodeGroup): Boolean {
+    fun setGroup(userName: String, appCodeGroup: AppCodeGroup): Boolean {
         return appCodeGroupDao.set(dslContext, userName, appCodeGroup)
     }
 
