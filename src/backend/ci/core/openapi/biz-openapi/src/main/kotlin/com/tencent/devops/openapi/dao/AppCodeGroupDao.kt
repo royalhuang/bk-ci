@@ -39,10 +39,9 @@ class AppCodeGroupDao {
     fun set(
         dslContext: DSLContext,
         userName: String,
-        appCode: String,
         appCodeGroup: AppCodeGroup
     ): Boolean {
-        val exist = exist(dslContext, appCode)
+        val exist = exist(dslContext, appCodeGroup)
         val now = LocalDateTime.now()
         with(TAppCodeGroup.T_APP_CODE_GROUP) {
             return if (exist) {
@@ -87,14 +86,76 @@ class AppCodeGroupDao {
         }
     }
 
+    fun update(
+            dslContext: DSLContext,
+            userName: String,
+            appCodeGroupId: Long,
+            appCodeGroup: AppCodeGroup
+    ): Boolean {
+        val exist = exist(dslContext, appCode)
+        val now = LocalDateTime.now()
+        with(TAppCodeGroup.T_APP_CODE_GROUP) {
+            return if (exist) {
+                dslContext.update(this)
+                        .set(BG_ID, appCodeGroup.bgId)
+                        .set(BG_NAME, appCodeGroup.bgName)
+                        .set(DEPT_ID, appCodeGroup.deptId)
+                        .set(DEPT_NAME, appCodeGroup.deptName)
+                        .set(CENTER_ID, appCodeGroup.centerId)
+                        .set(CENTER_NAME, appCodeGroup.centerName)
+                        .set(UPDATER, userName)
+                        .set(UPDATE_TIME, now)
+                        .where(APP_CODE.eq(appCode))
+                        .execute() > 0
+            } else {
+                dslContext.insertInto(this,
+                        APP_CODE,
+                        BG_ID,
+                        BG_NAME,
+                        DEPT_ID,
+                        DEPT_NAME,
+                        CENTER_ID,
+                        CENTER_NAME,
+                        CREATOR,
+                        CREATE_TIME,
+                        UPDATER,
+                        UPDATE_TIME
+                ).values(
+                        appCode,
+                        appCodeGroup.bgId,
+                        appCodeGroup.bgName,
+                        appCodeGroup.deptId,
+                        appCodeGroup.deptName,
+                        appCodeGroup.centerId,
+                        appCodeGroup.centerName,
+                        userName,
+                        now,
+                        userName,
+                        now
+                ).execute() > 0
+            }
+        }
+
+    }
+
     fun get(
-        dslContext: DSLContext,
-        appCode: String
+            dslContext: DSLContext,
+            appCodeGroupId: Long
     ): TAppCodeGroupRecord? {
         with(TAppCodeGroup.T_APP_CODE_GROUP) {
             return dslContext.selectFrom(this)
-                .where(APP_CODE.eq(appCode))
-                .fetchOne()
+                    .where(ID.eq(appCodeGroupId))
+                    .fetchOne()
+        }
+    }
+
+    fun getListByAppCode(
+            dslContext: DSLContext,
+            appCode: String
+    ): Result<TAppCodeGroupRecord> {
+        with(TAppCodeGroup.T_APP_CODE_GROUP) {
+            return dslContext.selectFrom(this)
+                    .where(APP_CODE.eq(appCode)).fetch()
         }
     }
 
@@ -108,7 +169,7 @@ class AppCodeGroupDao {
 
     fun exist(
         dslContext: DSLContext,
-        appCode: String
+        appCodeGroup: AppCodeGroup
     ): Boolean {
         with(TAppCodeGroup.T_APP_CODE_GROUP) {
             return dslContext.select()
@@ -119,11 +180,11 @@ class AppCodeGroupDao {
 
     fun delete(
         dslContext: DSLContext,
-        appCode: String
+        appCodeGroupId: Long
     ): Boolean {
         with(TAppCodeGroup.T_APP_CODE_GROUP) {
             return dslContext.delete(this)
-                .where(APP_CODE.eq(appCode)).execute() > 0
+                .where(ID.eq(appCodeGroupId)).execute() > 0
         }
     }
 }

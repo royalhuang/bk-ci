@@ -42,67 +42,67 @@ import java.util.concurrent.TimeUnit
  */
 @Service
 class AppCodeService(
-    private val client: Client,
-    private val appCodeGroupService: AppCodeGroupService,
-    private val appCodeProjectService: AppCodeProjectService
+        private val client: Client,
+        private val appCodeGroupService: AppCodeGroupService,
+        private val appCodeProjectService: AppCodeProjectService
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AppCodeService::class.java)
     }
 
     private val appCodeProjectCache = CacheBuilder.newBuilder()
-        .maximumSize(10000)
-        .expireAfterWrite(5, TimeUnit.MINUTES)
-        .build<String/*appCode*/, Map<String, String>/*Map<projectId,projectId>*/>(
-            object : CacheLoader<String, Map<String, String>>() {
-                override fun load(appCode: String): Map<String, String> {
-                    return try {
-                        val projectMap = getAppCodeProject(appCode)
-                        logger.info("appCode[$appCode] openapi projectMap:$projectMap.")
-                        projectMap
-                    } catch (t: Throwable) {
-                        logger.info("appCode[$appCode] failed to get projectMap.")
-                        mutableMapOf()
+            .maximumSize(10000)
+            .expireAfterWrite(5, TimeUnit.MINUTES)
+            .build<String/*appCode*/, Map<String, String>/*Map<projectId,projectId>*/>(
+                    object : CacheLoader<String, Map<String, String>>() {
+                        override fun load(appCode: String): Map<String, String> {
+                            return try {
+                                val projectMap = getAppCodeProject(appCode)
+                                logger.info("appCode[$appCode] openapi projectMap:$projectMap.")
+                                projectMap
+                            } catch (t: Throwable) {
+                                logger.info("appCode[$appCode] failed to get projectMap.")
+                                mutableMapOf()
+                            }
+                        }
                     }
-                }
-            }
-        )
+            )
 
     private val appCodeGroupCache = CacheBuilder.newBuilder()
-        .maximumSize(10000)
-        .expireAfterWrite(5, TimeUnit.MINUTES)
-        .build<String/*appCode*/, Pair<String, AppCodeGroup?>/*Map<projectId,AppCodeGroup>*/>(
-            object : CacheLoader<String, Pair<String, AppCodeGroup?>>() {
-                override fun load(appCode: String): Pair<String, AppCodeGroup?> {
-                    try {
-                        val appCodeGroup = getAppCodeGroup(appCode)
-                        logger.info("appCode[$appCode] openapi appCodeGroup:$appCodeGroup.")
-                        return Pair(appCode, appCodeGroup)
-                    } catch (t: Throwable) {
-                        logger.info("appCode[$appCode] failed to get appCodeGroup.")
-                        return Pair(appCode, null)
+            .maximumSize(10000)
+            .expireAfterWrite(5, TimeUnit.MINUTES)
+            .build<String/*appCode*/, Pair<String, List<AppCodeGroup>?>/*Map<projectId,AppCodeGroup>*/>(
+                    object : CacheLoader<String, Pair<String, List<AppCodeGroup>?>>() {
+                        override fun load(appCode: String): Pair<String, List<AppCodeGroup>?> {
+                            try {
+                                val appCodeGroupList = getAppCodeGroup(appCode)
+                                logger.info("appCode[$appCode] openapi appCodeGroupList:$appCodeGroupList.")
+                                return Pair(appCode, appCodeGroupList)
+                            } catch (t: Throwable) {
+                                logger.info("appCode[$appCode] failed to get appCodeGroup.")
+                                return Pair(appCode, null)
+                            }
+                        }
                     }
-                }
-            }
-        )
+            )
 
     private val projectInfoCache = CacheBuilder.newBuilder()
-        .maximumSize(10000)
-        .expireAfterWrite(5, TimeUnit.MINUTES)
-        .build<String/*appCode*/, Pair<String, ProjectVO?>/*Map<projectId,projectId>*/>(
-            object : CacheLoader<String, Pair<String, ProjectVO?>>() {
-                override fun load(projectId: String): Pair<String, ProjectVO?> {
-                    return try {
-                        val projectInfo = client.get(ServiceProjectResource::class).get(projectId).data
-                        logger.info("projectId[$projectId] openapi projectInfo:$projectInfo.")
-                        return Pair(projectId, projectInfo)
-                    } catch (t: Throwable) {
-                        logger.info("projectId[projectIdappCode] failed to get projectInfo.")
-                        return Pair(projectId, null)
+            .maximumSize(10000)
+            .expireAfterWrite(5, TimeUnit.MINUTES)
+            .build<String/*appCode*/, Pair<String, ProjectVO?>/*Map<projectId,projectId>*/>(
+                    object : CacheLoader<String, Pair<String, ProjectVO?>>() {
+                        override fun load(projectId: String): Pair<String, ProjectVO?> {
+                            return try {
+                                val projectInfo = client.get(ServiceProjectResource::class).get(projectId).data
+                                logger.info("projectId[$projectId] openapi projectInfo:$projectInfo.")
+                                return Pair(projectId, projectInfo)
+                            } catch (t: Throwable) {
+                                logger.info("projectId[projectIdappCode] failed to get projectInfo.")
+                                return Pair(projectId, null)
+                            }
+                        }
                     }
-                }
-            }
-        )
+            )
 
     private fun getAppCodeProject(appCode: String): Map<String, String> {
         val projectList = appCodeProjectService.listProjectByAppCode(appCode)
@@ -113,19 +113,23 @@ class AppCodeService(
         return result
     }
 
-    private fun getAppCodeGroup(appCode: String): AppCodeGroup? {
-        val appCodeGroupResponse = appCodeGroupService.getGroup(appCode)
-        return if (appCodeGroupResponse == null) {
+    private fun getAppCodeGroup(appCode: String): List<AppCodeGroup>? {
+        val appCodeGroupResponseList = appCodeGroupService.getGroups(appCode)
+        return if (appCodeGroupResponseList == null || appCodeGroupResponseList.isEmpty()) {
             null
         } else {
-            AppCodeGroup(
-                bgId = appCodeGroupResponse.bgId,
-                bgName = appCodeGroupResponse.bgName,
-                deptId = appCodeGroupResponse.deptId,
-                deptName = appCodeGroupResponse.deptName,
-                centerId = appCodeGroupResponse.centerId,
-                centerName = appCodeGroupResponse.centerName
-            )
+            val appCodeGroupList = mutableListOf<AppCodeGroup>()
+            appCodeGroupResponseList.forEach {
+                appCodeGroupList.add(AppCodeGroup(
+                        bgId = it.bgId,
+                        bgName = it.bgName,
+                        deptId = it.deptId,
+                        deptName = it.deptName,
+                        centerId = it.centerId,
+                        centerName = it.centerName
+                ))
+            }
+            appCodeGroupList
         }
     }
 
@@ -140,28 +144,32 @@ class AppCodeService(
             }
         }
         logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeProjectCache no matched.")
-        val appCodeGroup = appCodeGroupCache.get(appCode).second
-        logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache:$appCodeGroup.")
-        if (appCodeGroup != null) {
+        val appCodeGroupList = appCodeGroupCache.get(appCode).second
+        logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache:$appCodeGroupList.")
+        if (appCodeGroupList != null && appCodeGroupList.isNotEmpty()) {
             val projectInfo = projectInfoCache.get(projectId).second
             logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache projectInfo:$projectInfo.")
+
             if (projectInfo != null) {
-                if (appCodeGroup.centerId != null && projectInfo.centerId != null && appCodeGroup.centerId.toString() == projectInfo.centerId) {
-                    logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache centerId matched.")
-                    return true
+                appCodeGroupList.forEach { appCodeGroup ->
+                    if (appCodeGroup.centerId != null && projectInfo.centerId != null && appCodeGroup.centerId.toString() == projectInfo.centerId) {
+                        logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache centerId matched.")
+                        return true
+                    }
+                    if (appCodeGroup.deptId != null && projectInfo.deptId != null && appCodeGroup.deptId.toString() == projectInfo.deptId) {
+                        logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache deptId matched.")
+                        return true
+                    }
+                    if (appCodeGroup.bgId != null && projectInfo.bgId != null && appCodeGroup.bgId.toString() == projectInfo.bgId) {
+                        logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache bgId matched.")
+                        return true
+                    }
+                    if (appCodeGroup.centerId == null && appCodeGroup.deptId == null && appCodeGroup.bgId == null) {
+                        logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache all group matched.")
+                        return true
+                    }
                 }
-                if (appCodeGroup.deptId != null && projectInfo.deptId != null && appCodeGroup.deptId.toString() == projectInfo.deptId) {
-                    logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache deptId matched.")
-                    return true
-                }
-                if (appCodeGroup.bgId != null && projectInfo.bgId != null && appCodeGroup.bgId.toString() == projectInfo.bgId) {
-                    logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache bgId matched.")
-                    return true
-                }
-                if (appCodeGroup.centerId == null && appCodeGroup.deptId == null && appCodeGroup.bgId == null) {
-                    logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache all group matched.")
-                    return true
-                }
+
             }
         }
         logger.info("appCode[$appCode] projectId[$projectId] openapi appCodeGroupCache no matched.")
