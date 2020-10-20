@@ -31,6 +31,7 @@ import com.tencent.devops.openapi.dao.AppCodeGroupDao
 import com.tencent.devops.openapi.pojo.AppCodeGroup
 import com.tencent.devops.openapi.pojo.AppCodeGroupResponse
 import org.jooq.DSLContext
+import org.jooq.Result
 import org.springframework.stereotype.Service
 
 /**
@@ -44,15 +45,28 @@ class AppCodeGroupService(
     private val appCodeGroupDao: AppCodeGroupDao
 ) {
     fun setGroup(userName: String, appCode: String, appCodeGroup: AppCodeGroup): Boolean {
-        return appCodeGroupDao.set(dslContext, userName, appCode, appCodeGroup)
+        return appCodeGroupDao.set(dslContext, userName, appCodeGroup)
     }
 
-    fun getGroup(appCode: String): AppCodeGroupResponse? {
-        val record = appCodeGroupDao.get(dslContext, appCode)
+    fun updateGroup(userName: String, appCodeGroupId: Long, appCodeGroup: AppCodeGroup): Boolean {
+        return appCodeGroupDao.update(dslContext, userName, appCodeGroupId, appCodeGroup)
+    }
+
+    fun getGroups(appCode: String): List<AppCodeGroupResponse>? {
+        val records = appCodeGroupDao.getListByAppCode(dslContext, appCode)
+        return if(records.isEmpty()) {
+            null
+        }else {
+            transformRecords(records)
+        }
+    }
+
+    fun getGroup(appCodeGroupId: Long): AppCodeGroupResponse? {
+        val record = appCodeGroupDao.get(dslContext, appCodeGroupId)
         return if (record == null) {
             null
         } else {
-            tranform(record)
+            transform(record)
         }
     }
 
@@ -60,16 +74,16 @@ class AppCodeGroupService(
         val records = appCodeGroupDao.list(dslContext)
         val resultList = mutableListOf<AppCodeGroupResponse>()
         records.forEach {
-            resultList.add(tranform(it))
+            resultList.add(transform(it))
         }
         return resultList
     }
 
-    fun deleteGroup(userName: String, appCode: String): Boolean {
-        return appCodeGroupDao.delete(dslContext, appCode)
+    fun deleteGroup(userName: String, appCodeGroupId: Long): Boolean {
+        return appCodeGroupDao.delete(dslContext, appCodeGroupId)
     }
 
-    private fun tranform(record: TAppCodeGroupRecord): AppCodeGroupResponse {
+    private fun transform(record: TAppCodeGroupRecord): AppCodeGroupResponse {
         return AppCodeGroupResponse(
             id = record.id,
             appCode = record.appCode,
@@ -84,5 +98,26 @@ class AppCodeGroupService(
             updater = record.updater,
             updateTime = record.updateTime.timestampmilli()
         )
+    }
+
+    private fun transformRecords(records: Result<TAppCodeGroupRecord>): List<AppCodeGroupResponse> {
+        val lists = mutableListOf<AppCodeGroupResponse>()
+        records.forEach { record ->
+            lists.add(AppCodeGroupResponse(
+                    id = record.id,
+                    appCode = record.appCode,
+                    bgId = record.bgId,
+                    bgName = record.bgName,
+                    deptId = record.deptId,
+                    deptName = record.deptName,
+                    centerId = record.centerId,
+                    centerName = record.centerName,
+                    creator = record.creator,
+                    createTime = record.createTime.timestampmilli(),
+                    updater = record.updater,
+                    updateTime = record.updateTime.timestampmilli()
+            ))
+        }
+        return lists
     }
 }
