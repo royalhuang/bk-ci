@@ -30,6 +30,8 @@ import io.swagger.annotations.ApiModelProperty
 
 @ApiModel("AppCode所属组织架构信息")
 data class AppCodeGroup(
+    @ApiModelProperty("appCode")
+    val appCode: String,
     @ApiModelProperty("事业群ID")
     val bgId: Int?,
     @ApiModelProperty("事业群名字")

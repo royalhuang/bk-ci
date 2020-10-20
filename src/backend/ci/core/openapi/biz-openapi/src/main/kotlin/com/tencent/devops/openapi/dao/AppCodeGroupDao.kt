@@ -41,21 +41,11 @@ class AppCodeGroupDao {
         userName: String,
         appCodeGroup: AppCodeGroup
     ): Boolean {
-        val exist = exist(dslContext, appCodeGroup)
+        val exist = existByAppCodeGroup(dslContext, appCodeGroup)
         val now = LocalDateTime.now()
         with(TAppCodeGroup.T_APP_CODE_GROUP) {
             return if (exist) {
-                dslContext.update(this)
-                    .set(BG_ID, appCodeGroup.bgId)
-                    .set(BG_NAME, appCodeGroup.bgName)
-                    .set(DEPT_ID, appCodeGroup.deptId)
-                    .set(DEPT_NAME, appCodeGroup.deptName)
-                    .set(CENTER_ID, appCodeGroup.centerId)
-                    .set(CENTER_NAME, appCodeGroup.centerName)
-                    .set(UPDATER, userName)
-                    .set(UPDATE_TIME, now)
-                    .where(APP_CODE.eq(appCode))
-                    .execute() > 0
+                true
             } else {
                 dslContext.insertInto(this,
                     APP_CODE,
@@ -70,7 +60,7 @@ class AppCodeGroupDao {
                     UPDATER,
                     UPDATE_TIME
                 ).values(
-                    appCode,
+                    appCodeGroup.appCode,
                     appCodeGroup.bgId,
                     appCodeGroup.bgName,
                     appCodeGroup.deptId,
@@ -92,11 +82,12 @@ class AppCodeGroupDao {
             appCodeGroupId: Long,
             appCodeGroup: AppCodeGroup
     ): Boolean {
-        val exist = exist(dslContext, appCode)
+        val exist = existById(dslContext, appCodeGroupId)
         val now = LocalDateTime.now()
         with(TAppCodeGroup.T_APP_CODE_GROUP) {
             return if (exist) {
                 dslContext.update(this)
+                        .set(APP_CODE, appCodeGroup.appCode)
                         .set(BG_ID, appCodeGroup.bgId)
                         .set(BG_NAME, appCodeGroup.bgName)
                         .set(DEPT_ID, appCodeGroup.deptId)
@@ -105,34 +96,10 @@ class AppCodeGroupDao {
                         .set(CENTER_NAME, appCodeGroup.centerName)
                         .set(UPDATER, userName)
                         .set(UPDATE_TIME, now)
-                        .where(APP_CODE.eq(appCode))
+                        .where(ID.eq(appCodeGroupId))
                         .execute() > 0
             } else {
-                dslContext.insertInto(this,
-                        APP_CODE,
-                        BG_ID,
-                        BG_NAME,
-                        DEPT_ID,
-                        DEPT_NAME,
-                        CENTER_ID,
-                        CENTER_NAME,
-                        CREATOR,
-                        CREATE_TIME,
-                        UPDATER,
-                        UPDATE_TIME
-                ).values(
-                        appCode,
-                        appCodeGroup.bgId,
-                        appCodeGroup.bgName,
-                        appCodeGroup.deptId,
-                        appCodeGroup.deptName,
-                        appCodeGroup.centerId,
-                        appCodeGroup.centerName,
-                        userName,
-                        now,
-                        userName,
-                        now
-                ).execute() > 0
+                false
             }
         }
 
@@ -167,14 +134,29 @@ class AppCodeGroupDao {
         }
     }
 
-    fun exist(
+    fun existByAppCodeGroup(
         dslContext: DSLContext,
         appCodeGroup: AppCodeGroup
     ): Boolean {
         with(TAppCodeGroup.T_APP_CODE_GROUP) {
             return dslContext.select()
                 .from(this)
-                .where(APP_CODE.eq(appCode)).fetch().isNotEmpty
+                .where(APP_CODE.eq(appCodeGroup.appCode)
+                        .and(BG_ID.eq(appCodeGroup.bgId))
+                        .and(DEPT_ID.eq(appCodeGroup.deptId))
+                        .and(CENTER_ID.eq(appCodeGroup.centerId))
+                ).fetch().isNotEmpty
+        }
+    }
+
+    fun existById(
+            dslContext: DSLContext,
+            appCodeGroupId: Long
+    ): Boolean {
+        with(TAppCodeGroup.T_APP_CODE_GROUP) {
+            return dslContext.select()
+                    .from(this)
+                    .where(ID.eq(appCodeGroupId)).fetch().isNotEmpty
         }
     }
 
