@@ -741,13 +741,13 @@ class DockerHostBuildService(
 
     fun resetContainer(containerId: String) {
         logger.info("<--------------------- resetContainer $containerId --------------------->")
-        httpDockerCli.pauseContainerCmd(containerId).exec()
+        // httpDockerCli.pauseContainerCmd(containerId).exec()
         logger.info("<--------------------- pauseContainer $containerId --------------------->")
         val containerInfo = httpDockerCli.inspectContainerCmd(containerId).exec()
         logger.info("<--------------------- inspectContainer $containerId ${containerInfo.state.status} --------------------->")
         httpDockerCli.updateContainerCmd(containerId).withMemoryReservation(1024 * 1024 * 1024).withCpuPeriod(10000).withCpuQuota(60000).exec()
         logger.info("<--------------------- updateContainer $containerId --------------------->")
-        httpDockerCli.unpauseContainerCmd(containerId).exec()
+        // httpDockerCli.unpauseContainerCmd(containerId).exec()
         logger.info("<--------------------- unpauseContainer $containerId --------------------->")
     }
 
