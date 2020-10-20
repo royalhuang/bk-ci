@@ -1616,9 +1616,6 @@ class PipelineBuildService(
                 model = model
             )
 
-            // 加锁为了保证同一流水线的同时构建数量拦截的准确性
-            runLock.lock()
-
             val interceptResult = pipelineInterceptorChain.filter(InterceptData(readyToBuildPipelineInfo, fullModel, startType))
             if (interceptResult.isNotOk()) {
                 // 发送排队失败的事件
@@ -1669,7 +1666,7 @@ class PipelineBuildService(
             pipelineRuntimeService.initBuildParameters(buildId)
             return buildId
         } finally {
-            runLock.unlock()
+            if (readyToBuildPipelineInfo.channelCode !in NO_LIMIT_CHANNEL) runLock.unlock()
         }
     }
 
