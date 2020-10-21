@@ -104,6 +104,7 @@ object ProcessMessageCode {
     const val ERROR_PIPLEINE_INPUT = "2101058" // 流水线: 前端缓存异常,请刷新后重新操作
     const val MODEL_ATOMCODE_NOT_EXSIT = "2101059" // MODEL内存在不存在的AtomCode
     const val MODEL_ATOMCODE_PROJECT_NOT_INSTALL = "2101060" // Model内包含项目未安装插件[{0}]
+    const val MODEL_DEFAULT_ATOMCODE_NOT_EXSIT = "2101061" // Model内包含不存在的内置插件
 
     const val ERROR_PIPELINE_NOT_EXISTS = "2101038" // 流水线不存在
     const val ERROR_PIPELINE_MODEL_NOT_EXISTS = "2101039" // 流水线的模型不存在
