@@ -24,46 +24,46 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.common.service.utils
+package com.tencent.devops.artifactory.api.user
 
-import com.tencent.devops.common.service.config.CommonConfig
+import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID
+import com.tencent.devops.common.api.pojo.Result
+import io.swagger.annotations.Api
+import io.swagger.annotations.ApiOperation
+import io.swagger.annotations.ApiParam
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition
+import org.glassfish.jersey.media.multipart.FormDataParam
+import java.io.InputStream
+import javax.ws.rs.Consumes
+import javax.ws.rs.HeaderParam
+import javax.ws.rs.POST
+import javax.ws.rs.Path
+import javax.ws.rs.Produces
+import javax.ws.rs.core.MediaType
 
-object HomeHostUtil {
-    fun getHost(host: String): String {
-        return if (host.startsWith("http://") || host.startsWith("https://")) {
-            host.removeSuffix("/")
-        } else {
-            "http://${host.removeSuffix("/")}"
-        }
-    }
+@Api(tags = ["USER_ARTIFACTORY"], description = "仓库-文件管理")
+@Path("/user/artifactories")
+@Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
+interface UserTencentFileResource {
 
-    fun buildGateway(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsBuildGateway!!)
-    }
-
-    fun innerServerHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsHostGateway!!)
-    }
-
-    fun innerApiHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsApiGateway!!)
-    }
-
-    fun outerServerHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsOuterHostGateWay!!)
-    }
-
-    fun outerApiServerHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsOuteApiHostGateWay!!)
-    }
-
-    fun shortUrlServerHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsShortUrlGateway!!)
-    }
+    @ApiOperation("上传文件")
+    @POST
+    @Path("/file/uploadToPath")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    fun uploadToPath(
+        @ApiParam("userId", required = true)
+        @HeaderParam(AUTH_HEADER_USER_ID)
+        userId: String,
+        @ApiParam("项目代码", required = false)
+        @FormDataParam("projectId")
+        projectId: String,
+        @FormDataParam("path")
+        path: String,
+        @ApiParam("文件", required = true)
+        @FormDataParam("file")
+        inputStream: InputStream,
+        @FormDataParam("file")
+        disposition: FormDataContentDisposition
+    ): Result<Boolean>
 }

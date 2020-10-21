@@ -62,7 +62,6 @@ import com.tencent.devops.common.pipeline.pojo.element.trigger.TimerTriggerEleme
 import com.tencent.devops.common.pipeline.pojo.element.trigger.enums.CodeType
 import com.tencent.devops.common.pipeline.utils.ModelUtils
 import com.tencent.devops.common.pipeline.utils.SkipElementUtils
-import com.tencent.devops.common.service.trace.TraceTag
 import com.tencent.devops.common.service.utils.SpringContextUtil
 import com.tencent.devops.common.websocket.dispatch.WebSocketDispatcher
 import com.tencent.devops.model.process.tables.records.TPipelineBuildContainerRecord
@@ -83,7 +82,6 @@ import com.tencent.devops.process.engine.common.BS_MANUAL_ACTION_SUGGEST
 import com.tencent.devops.process.engine.common.BS_MANUAL_ACTION_USERID
 import com.tencent.devops.process.engine.common.Timeout
 import com.tencent.devops.process.engine.common.VMUtils
-import com.tencent.devops.process.engine.control.DependOnUtils
 import com.tencent.devops.process.engine.dao.PipelineBuildContainerDao
 import com.tencent.devops.process.engine.dao.PipelineBuildDao
 import com.tencent.devops.process.engine.dao.PipelineBuildStageDao
@@ -142,7 +140,6 @@ import org.jooq.Record
 import org.jooq.Result
 import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
-import org.slf4j.MDC
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -784,14 +781,13 @@ class PipelineRuntimeService @Autowired constructor(
             // 当前 stage 是否是重试的 stage
             val retryStage = stageId == retryStartTaskId
 
-            // #2318 如果是stage重试不是当前stage，并且当前stage已经是完成状态，则直接跳过
-            if (isStageRetry && !retryStage && BuildStatus.parse(stage.status).isFinish()) {
-                logger.info("[$buildId|RETRY|STAGE(#$stageId)(${stage.name})(${stage.status}) is not in retry STAGE($retryStartTaskId)")
+            // 如果是stage重试不是当前stage，则直接进入下一个stage
+            if (isStageRetry && !retryStage) {
+                logger.info("[$buildId|RETRY|STAGE(#$stageId)(${stage.name}) is not in retry STAGE($retryStartTaskId)")
                 containerSeq += stage.containers.size // Job跳过计数也需要增加
                 return@nextStage
             }
 
-            DependOnUtils.initDependOn(stage = stage, params = params)
             // --- 第2层循环：Container遍历处理 ---
             stage.containers.forEach nextContainer@{ container ->
                 var startVMTaskSeq = -1 // 启动构建机位置，解决如果在执行人工审核插件时，无编译环境不需要提前无意义的启动
@@ -1002,8 +998,7 @@ class PipelineRuntimeService @Autowired constructor(
                 if (stage.tag == null) stage.tag = listOf(defaultStageTagId)
             }
 
-            // 只在第一次启动时刷新为QUEUE，若重试则保持原审核状态
-            if (stageOption?.stageControlOption?.manualTrigger == true && stageOption.stageControlOption.triggered != true) {
+            if (stageOption?.stageControlOption?.manualTrigger == true) {
                 stage.reviewStatus = BuildStatus.QUEUE.name
             }
 
@@ -1094,9 +1089,6 @@ class PipelineRuntimeService @Autowired constructor(
                 buildId = buildId,
                 variables = startParamsWithType.map { it.key to it.value }.toMap()
             )
-
-            // 保存链路信息
-            addTraceVar(projectId = pipelineInfo.projectId, pipelineId = pipelineInfo.pipelineId, buildId = buildId)
 
             // 上一次存在的需要重试的任务直接Update，否则就插入
             if (updateExistsRecord.isEmpty()) {
@@ -1954,20 +1946,6 @@ class PipelineRuntimeService @Autowired constructor(
                 pipelineId = pipelineId,
                 buildId = buildId,
                 param = JsonUtil.getObjectMapper().writeValueAsString(params)
-            )
-        }
-    }
-
-    private fun addTraceVar(projectId: String, pipelineId: String, buildId: String) {
-        val traceMap = mutableMapOf<String, String>()
-        val bizId = MDC.get(TraceTag.BIZID)
-        if (!bizId.isNullOrEmpty()) {
-            traceMap[TraceTag.TRACE_HEADER_DEVOPS_BIZID] = MDC.get(TraceTag.BIZID)
-            buildVariableService.batchSetVariable(
-                    projectId = projectId,
-                    pipelineId = pipelineId,
-                    buildId = buildId,
-                    variables = traceMap
             )
         }
     }
