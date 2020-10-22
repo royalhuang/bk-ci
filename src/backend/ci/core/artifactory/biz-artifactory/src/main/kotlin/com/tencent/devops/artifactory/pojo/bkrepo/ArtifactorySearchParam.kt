@@ -24,46 +24,15 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.common.service.utils
+package com.tencent.devops.artifactory.pojo.bkrepo
 
-import com.tencent.devops.common.service.config.CommonConfig
-
-object HomeHostUtil {
-    fun getHost(host: String): String {
-        return if (host.startsWith("http://") || host.startsWith("https://")) {
-            host.removeSuffix("/")
-        } else {
-            "http://${host.removeSuffix("/")}"
-        }
-    }
-
-    fun buildGateway(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsBuildGateway!!)
-    }
-
-    fun innerServerHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsHostGateway!!)
-    }
-
-    fun innerApiHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsApiGateway!!)
-    }
-
-    fun outerServerHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsOuterHostGateWay!!)
-    }
-
-    fun outerApiServerHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsOuteApiHostGateWay!!)
-    }
-
-    fun shortUrlServerHost(): String {
-        val commonConfig = SpringContextUtil.getBean(CommonConfig::class.java)
-        return getHost(commonConfig.devopsShortUrlGateway!!)
-    }
-}
+data class ArtifactorySearchParam(
+    val projectId: String,
+    val pipelineId: String,
+    val buildId: String,
+    val regexPath: String,
+    val custom: Boolean,
+    val executeCount: Int = 1, // 打印日志用到
+    val elementId: String = "", // 打印日志用到
+    val containerId: String = "" // 打印日志用到
+)
