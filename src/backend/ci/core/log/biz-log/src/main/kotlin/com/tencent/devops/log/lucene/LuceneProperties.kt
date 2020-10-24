@@ -24,9 +24,12 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.log.model
+package com.tencent.devops.log.lucene
 
-data class IndexAndType(
-    val index: String,
-    val type: String
+import org.springframework.boot.context.properties.ConfigurationProperties
+
+@ConfigurationProperties(prefix = "log.lucene")
+data class LuceneProperties(
+    val dataDirectory: String? = null,
+    val indexMaxSize: Int? = Int.MAX_VALUE
 )

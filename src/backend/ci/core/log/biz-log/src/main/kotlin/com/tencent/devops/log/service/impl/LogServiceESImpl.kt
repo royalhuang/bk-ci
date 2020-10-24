@@ -51,9 +51,7 @@ import com.tencent.devops.log.service.LogService
 import com.tencent.devops.log.service.LogStatusService
 import com.tencent.devops.log.service.LogTagService
 import com.tencent.devops.log.util.Constants
-import com.tencent.devops.log.util.ESIndexUtils.getDocumentObject
-import com.tencent.devops.log.util.ESIndexUtils.getIndexSettings
-import com.tencent.devops.log.util.ESIndexUtils.getTypeMappings
+import com.tencent.devops.log.util.ESIndexUtils
 import org.elasticsearch.action.admin.indices.open.OpenIndexRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.index.IndexRequest
@@ -75,10 +73,6 @@ import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder
 import org.elasticsearch.search.sort.SortOrder
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.stereotype.Service
-import java.io.File
 import java.io.IOException
 import java.sql.Date
 import java.text.SimpleDateFormat
@@ -93,8 +87,7 @@ import javax.ws.rs.core.StreamingOutput
 import kotlin.math.max
 import kotlin.math.min
 
-@Service
-class LogServiceFileImpl @Autowired constructor(
+class LogServiceESImpl constructor(
     private val client: LogClient,
     private val indexService: IndexService,
     private val logStatusService: LogStatusService,
@@ -106,33 +99,14 @@ class LogServiceFileImpl @Autowired constructor(
     private val logMQEventDispatcher: LogMQEventDispatcher
 ) : LogService {
 
-    @Value("\${log.path:#{null}}")
-    private var logStorageDirectory: String? = null
-
     companion object {
-        private val logger = LoggerFactory.getLogger(LogServiceFileImpl::class.java)
-        private val defaultStorageDirectory = "/data/devops/log"
-        private val limitedLineNo = 10000
+        private val logger = LoggerFactory.getLogger(LogServiceESImpl::class.java)
     }
 
-    private fun getStorageFile(
-        buildId: String,
-        jobId: String? = "",
-        tag: String? = "",
-        executeCount: Int? = 1
-    ): File {
-        val storagePath = logStorageDirectory ?: defaultStorageDirectory
-        try {
-            val rootDir = File(storagePath)
-            if (!rootDir.exists()) rootDir.mkdirs()
-            if (!rootDir.isDirectory) throw
-            val logFile = File(rootDir, buildId + File.separator + tag + File.separator + executeCount + ".json")
-            if (logFile.exists())
-        } catch (e: IOException) {
-
-        }
-
-    }
+    private val indexCache = CacheBuilder.newBuilder()
+        .maximumSize(100000)
+        .expireAfterAccess(30, TimeUnit.MINUTES)
+        .build<String/*BuildId*/, Boolean/*Has create the index*/>()
 
     override fun pipelineFinish(event: PipelineBuildFinishBroadCastEvent) {
         with(event) {
@@ -144,7 +118,9 @@ class LogServiceFileImpl @Autowired constructor(
     override fun addLogEvent(event: LogEvent) {
         startLog(event.buildId)
         val logMessage = addLineNo(event.buildId, event.logs)
-        logMQEventDispatcher.dispatch(LogBatchEvent(event.buildId, logMessage))
+        if (logMessage.isNotEmpty()) {
+            logMQEventDispatcher.dispatch(LogBatchEvent(event.buildId, logMessage))
+        }
     }
 
     override fun addBatchLogEvent(event: LogBatchEvent) {
@@ -319,7 +295,7 @@ class LogServiceFileImpl @Autowired constructor(
         }
     }
 
-    override fun queryMoreOriginLogsAfterLine(
+    override fun queryLogsAfterLine(
         buildId: String,
         start: Long,
         tag: String?,
@@ -541,7 +517,7 @@ class LogServiceFileImpl @Autowired constructor(
         }
     }
 
-    fun reopenIndex(buildId: String): Boolean {
+    override fun reopenIndex(buildId: String): Boolean {
         logger.info("Reopen Index - $buildId")
         val index = indexService.getIndexName(buildId)
         return openIndex(buildId, index)
@@ -1875,7 +1851,7 @@ class LogServiceFileImpl @Autowired constructor(
         logMessage: LogMessageWithLineNo,
         index: String
     ): IndexRequest? {
-        val builder = getDocumentObject(buildId, logMessage)
+        val builder = ESIndexUtils.getDocumentObject(buildId, logMessage)
         return try {
             IndexRequest(index).source(builder)
         } catch (e: IOException) {
@@ -1957,8 +1933,8 @@ class LogServiceFileImpl @Autowired constructor(
         return try {
             logger.info("[$index] Start to create the index")
             val request = CreateIndexRequest(index)
-                .settings(getIndexSettings())
-                .mapping(getTypeMappings())
+                .settings(ESIndexUtils.getIndexSettings())
+                .mapping(ESIndexUtils.getTypeMappings())
             request.setTimeout(TimeValue.timeValueSeconds(30))
             val response = client.restClient(buildId).indices()
                 .create(request, RequestOptions.DEFAULT)

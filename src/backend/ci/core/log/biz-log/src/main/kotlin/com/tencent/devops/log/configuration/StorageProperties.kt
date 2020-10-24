@@ -24,20 +24,17 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.log.client
+package com.tencent.devops.log.configuration
 
-import com.tencent.devops.log.es.ESClient
-import org.elasticsearch.client.RestHighLevelClient
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
 
-interface LogClient {
-
-    fun restClient(buildId: String) = getClient(buildId)
-
-    private fun getClient(buildId: String): RestHighLevelClient {
-        return hashClient(buildId).client
-    }
-
-    fun getActiveClients(): List<ESClient>
-
-    fun hashClient(buildId: String): ESClient
+@Component
+class StorageProperties {
+    @Value("\${log.storage.type}")
+    val type: String = "lucene"
+    @Value("\${log.storage.closeInDay}")
+    val closeInDay: Int = Int.MAX_VALUE
+    @Value("\${log.storage.deleteInDay}")
+    val deleteInDay: Int = Int.MAX_VALUE
 }
