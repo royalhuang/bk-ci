@@ -40,6 +40,7 @@ import com.tencent.devops.process.engine.service.PipelineRuntimeService
 import com.tencent.devops.process.pojo.mq.PipelineBuildContainerEvent
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
+import java.util.concurrent.TimeUnit
 
 /**
  *  MQ实现的流水线构建心跳事件
@@ -67,7 +68,7 @@ class PipelineBuildHeartbeatListener @Autowired constructor(
             }
             val elapse = System.currentTimeMillis() - lastUpdate.toLong()
             if (elapse > TIMEOUT_IN_MS) {
-                logger.error("The build($buildId) is timeout for ${elapse}ms, terminate it")
+                logger.warn("The build($buildId) is timeout for ${elapse}ms, terminate it")
 
                 val container = pipelineRuntimeService.getContainer(buildId = buildId, stageId = null, containerId = containerId)
                     ?: run {
@@ -78,7 +79,7 @@ class PipelineBuildHeartbeatListener @Autowired constructor(
                 // #2365 在Set Up Job位置记录心跳超时信息
                 buildLogPrinter.addRedLine(
                     buildId = buildId,
-                    message = "构建任务对应的Agent的心跳超时，请检查Agent的状态",
+                    message = "构建任务对应的Agent的心跳超时/Agent's heartbeat is lost for a long time(${TimeUnit.MILLISECONDS.toSeconds(elapse)} sec)",
                     tag = VMUtils.genStartVMTaskId(containerId),
                     jobId = containerId,
                     executeCount = container.executeCount
@@ -91,7 +92,7 @@ class PipelineBuildHeartbeatListener @Autowired constructor(
                         val executeCount = taskMap["executeCount"]?.toString()?.toInt() ?: 1
                         buildLogPrinter.addRedLine(
                             buildId = buildId,
-                            message = "构建任务对应的Agent的心跳超时，请检查Agent的状态",
+                            message = "构建任务对应的Agent的心跳超时/Agent's heartbeat is lost for a long time(${TimeUnit.MILLISECONDS.toSeconds(elapse)} sec)",
                             tag = taskMap["taskId"].toString(),
                             jobId = containerId,
                             executeCount = executeCount
