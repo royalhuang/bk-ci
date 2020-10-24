@@ -201,7 +201,7 @@ class PipelineBuildWebhookService @Autowired constructor(
                  * 验证流水线参数构建启动参数
                  */
                 val triggerContainer = model.stages[0].containers[0] as TriggerContainer
-                var canWebhookStartup = canWebhookStartup(triggerContainer, codeRepositoryType)
+                val canWebhookStartup = canWebhookStartup(triggerContainer, codeRepositoryType)
 
                 if (!canWebhookStartup) {
                     logger.info("can not start by $codeRepositoryType, ignore")
