@@ -309,6 +309,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
     }
 
     override fun validateAtomPassTestCondition(userId: String, atomId: String): Boolean {
+        logger.info("validateAtomPassTestCondition userId: $userId,atomId: $atomId")
         // 获取当次构建对应的commitId
         val storeType = StoreTypeEnum.ATOM.name
         var commitId = redisOperation.get("$STORE_REPO_COMMIT_KEY_PREFIX:$storeType:$atomId")
@@ -323,6 +324,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
                     sha = "master",
                     tokenType = TokenTypeEnum.PRIVATE_KEY
                 )
+            logger.info("validateAtomPassTestCondition getRepoRecentCommitInfoResult: $getRepoRecentCommitInfoResult")
             if (getRepoRecentCommitInfoResult.isNotOk()) {
                 throw ErrorCodeException(
                     errorCode = getRepoRecentCommitInfoResult.status.toString(),
@@ -341,6 +343,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
     }
 
     private fun handleAtomCodeccValidateStatus(repoId: String, commitId: String?): Boolean {
+        logger.info("handleAtomCodeccValidateStatus repoId: $repoId,commitId: $commitId")
         val startTime = System.currentTimeMillis()
         var validateFlag = false
         loop@ while (true) {
