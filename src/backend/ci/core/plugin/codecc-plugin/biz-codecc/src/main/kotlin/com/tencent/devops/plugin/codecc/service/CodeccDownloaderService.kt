@@ -45,7 +45,7 @@ class CodeccDownloaderService {
     @Value("\${plugin.codecc.path:#{null}}")
     private val codeccPath: String? = null
 
-    @Value("\${plugin.codecc.toolFile}")
+    @Value("\${plugin.codecc.toolFile:#{null}}")
     private lateinit var toolScriptFile: String
 
     fun downloadTool(toolName: String, osType: OSType, fileMd5: String, is32Bit: Boolean?): Response {

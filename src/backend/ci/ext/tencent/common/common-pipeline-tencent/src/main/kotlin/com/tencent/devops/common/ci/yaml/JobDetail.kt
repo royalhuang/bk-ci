@@ -30,7 +30,7 @@ import com.tencent.devops.common.ci.image.Pool
 import com.tencent.devops.common.ci.task.AbstractTask
 
 data class JobDetail(
-    val name: String?,
+    val displayName: String?,
     val type: String?,
     val pool: Pool?,
     val steps: List<AbstractTask>,
@@ -50,10 +50,13 @@ data class JobDetail(
  *             container: mirrors.tencent.com/tlinux2.2:latest
  *             credential:
  *               credentialId: xxx
+ *               user: xxx
+ *               password: xxx
  *             systemVersion: 10.15.6 | win10
  *             xcodeVersion: xcode10
  *             visualStudioVersion: 2019 | 2020
  *             agentId: xxx
+ *             agentName: xxx
  *             workspace: xxx
  *             env:
  *               jdk: 1.8.0_161

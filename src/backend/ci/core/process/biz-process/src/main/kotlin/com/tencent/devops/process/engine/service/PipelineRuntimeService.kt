@@ -1650,6 +1650,7 @@ class PipelineRuntimeService @Autowired constructor(
             logger.error("getBuildParameters-$buildId exception:", e)
             mutableListOf()
         }
+        logger.info("initBuildParameters $buildId | ${JsonUtil.toJson(buildParameters)}")
         pipelineBuildDao.updateBuildParameters(dslContext, buildId, JsonUtil.toJson(buildParameters))
     }
 

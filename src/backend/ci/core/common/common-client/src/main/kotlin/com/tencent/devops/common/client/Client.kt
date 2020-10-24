@@ -231,7 +231,7 @@ class Client @Autowired constructor(
         try {
             return SpringContextUtil.getBean(clz.java)
         } catch (ignored: Exception) {
-            logger.info("[$clz]|try to proxy by feign: ${ignored.message}")
+            logger.info("[$clz]|try to proxy by feign: ${ignored.message}", ignored)
         }
         val requestInterceptor = SpringContextUtil.getBean(RequestInterceptor::class.java) // 获取为feign定义的拦截器
         return Feign.builder()

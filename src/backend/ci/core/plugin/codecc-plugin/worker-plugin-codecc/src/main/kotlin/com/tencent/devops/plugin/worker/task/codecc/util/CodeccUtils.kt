@@ -397,6 +397,7 @@ open class CodeccUtils {
                 buildId = codeccExecuteConfig.buildTask.buildId,
                 script = script,
                 dir = codeccExecuteConfig.workspace,
+                workspace = codeccExecuteConfig.workspace,
                 runtimeVariables = codeccExecuteConfig.buildVariables.variables
             )
         } else {

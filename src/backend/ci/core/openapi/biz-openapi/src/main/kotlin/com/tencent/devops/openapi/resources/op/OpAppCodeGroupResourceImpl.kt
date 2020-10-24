@@ -43,19 +43,23 @@ class OpAppCodeGroupResourceImpl @Autowired constructor(
         private val logger = LoggerFactory.getLogger(OpAppCodeGroupResourceImpl::class.java)
     }
 
-    override fun setGroup(userName: String, appCode: String, appCodeGroup: AppCodeGroup): Result<Boolean> {
-        return Result(appCodeGroupService.setGroup(userName, appCode, appCodeGroup))
+    override fun setAppCodeGroup(userName: String, appCodeGroup: AppCodeGroup): Result<Boolean> {
+        return Result(appCodeGroupService.setGroup(userName, appCodeGroup))
     }
 
-    override fun getGroup(userName: String, appCode: String): Result<AppCodeGroupResponse?> {
-        return Result(appCodeGroupService.getGroup(appCode))
+    override fun updateAppCodeGroup(userName: String, appCodeGroupId: Long, appCodeGroup: AppCodeGroup): Result<Boolean> {
+        return Result(appCodeGroupService.updateGroup(userName, appCodeGroupId, appCodeGroup))
     }
 
-    override fun listGroup(userName: String): Result<List<AppCodeGroupResponse>> {
+    override fun getAppCodeGroup(userName: String, appCodeGroupId: Long): Result<AppCodeGroupResponse?> {
+        return Result(appCodeGroupService.getGroup(appCodeGroupId))
+    }
+
+    override fun listAppCodeGroup(userName: String): Result<List<AppCodeGroupResponse>> {
         return Result(appCodeGroupService.listGroup(userName))
     }
 
-    override fun deleteGroup(userName: String, appCode: String): Result<Boolean> {
-        return Result(appCodeGroupService.deleteGroup(userName, appCode))
+    override fun deleteAppCodeGroup(userName: String, appCodeGroupId: Long): Result<Boolean> {
+        return Result(appCodeGroupService.deleteGroup(userName, appCodeGroupId))
     }
 }

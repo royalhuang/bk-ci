@@ -58,6 +58,7 @@ import com.tencent.devops.common.service.utils.HomeHostUtil
 import com.tencent.devops.common.service.utils.MessageCodeUtil
 import com.tencent.devops.common.log.utils.BuildLogPrinter
 import com.tencent.devops.process.constant.ProcessMessageCode
+import com.tencent.devops.process.engine.common.VMUtils
 import com.tencent.devops.process.engine.compatibility.BuildParametersCompatibilityTransformer
 import com.tencent.devops.process.engine.compatibility.BuildPropertyCompatibilityTools
 import com.tencent.devops.process.engine.control.lock.BuildIdLock
@@ -306,6 +307,12 @@ class PipelineBuildService(
                 )
             }
 
+            if(buildInfo.pipelineId != pipelineId) {
+                logger.warn("retry error: input|$pipelineId| buildId-pipeline| ${buildInfo.pipelineId}| $buildId")
+                throw ErrorCodeException(
+                        errorCode = ProcessMessageCode.ERROR_PIPLEINE_INPUT
+                )
+            }
             val model = buildDetailService.getBuildModel(buildId) ?: throw ErrorCodeException(
                 errorCode = ProcessMessageCode.ERROR_PIPELINE_MODEL_NOT_EXISTS
             )
@@ -709,12 +716,19 @@ class PipelineBuildService(
         checkPermission: Boolean = true
     ) {
 
-        pipelineRuntimeService.getBuildInfo(buildId)
+        val buildInfo = pipelineRuntimeService.getBuildInfo(buildId)
             ?: throw ErrorCodeException(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
                 defaultMessage = "构建任务${buildId}不存在",
                 params = arrayOf(buildId))
+
+        if(buildInfo.pipelineId != pipelineId) {
+            logger.warn("buildManualReview error: input|$pipelineId| buildId-pipeline| ${buildInfo.pipelineId}| $buildId")
+            throw ErrorCodeException(
+                    errorCode = ProcessMessageCode.ERROR_PIPLEINE_INPUT
+            )
+        }
 
         val model = pipelineRepositoryService.getModel(pipelineId) ?: throw ErrorCodeException(
             statusCode = Response.Status.NOT_FOUND.statusCode,
@@ -772,12 +786,20 @@ class PipelineBuildService(
                 errorCode = ProcessMessageCode.ERROR_PIPELINE_NOT_EXISTS,
                 defaultMessage = "流水线不存在",
                 params = arrayOf(buildId))
-        pipelineRuntimeService.getBuildInfo(buildId)
+        val buildInfo = pipelineRuntimeService.getBuildInfo(buildId)
             ?: throw ErrorCodeException(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
                 defaultMessage = "构建任务${buildId}不存在",
                 params = arrayOf(buildId))
+
+        if(buildInfo.pipelineId != pipelineId) {
+            logger.warn("buildManualStartStage error: input|$pipelineId| buildId-pipeline| ${buildInfo.pipelineId}| $buildId")
+            throw ErrorCodeException(
+                    errorCode = ProcessMessageCode.ERROR_PIPLEINE_INPUT
+            )
+        }
+
         val buildStage = pipelineStageService.getStage(buildId, stageId)
             ?: throw ErrorCodeException(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
@@ -1477,6 +1499,13 @@ class PipelineBuildService(
             val modelDetail = buildDetailService.get(buildId)
                 ?: return
             val alreadyCancelUser = modelDetail.cancelUserId
+            
+            if (modelDetail.pipelineId != pipelineId) {
+                logger.warn("shutdown error: input|$pipelineId| buildId-pipeline| ${modelDetail.pipelineId}| $buildId")
+                throw ErrorCodeException(
+                        errorCode = ProcessMessageCode.ERROR_PIPLEINE_INPUT
+                )
+            }
 
             if (!alreadyCancelUser.isNullOrBlank()) {
                 logger.warn("The build $buildId of project $projectId already cancel by user $alreadyCancelUser")
@@ -1511,21 +1540,21 @@ class PipelineBuildService(
             val tasks = getRunningTask(projectId, buildId)
 
             tasks.forEach { task ->
-                val taskId = task["taskId"] ?: ""
-                val containerId = task["containerId"] ?: ""
+                val taskId = task["taskId"].toString() ?: ""
+                val containerId = task["containerId"]?.toString() ?: ""
                 val status = task["status"] ?: ""
-                val executeCount = task["executeCount"] ?: 1
+                val executeCount = task["executeCount"]?.toString()?.toInt() ?: 1
                 logger.info("build($buildId) shutdown by $userId, taskId: $taskId, status: $status")
                 buildLogPrinter.addYellowLine(
                     buildId = buildId,
                     message = "流水线被用户终止，操作人:$userId",
-                    tag = taskId.toString(),
-                    jobId = containerId.toString(),
-                    executeCount = executeCount as Int
+                    tag = taskId,
+                    jobId = containerId,
+                    executeCount = executeCount
                 )
             }
 
-            if (tasks.isNotEmpty()) {
+            if (tasks.isEmpty()) {
                 buildLogPrinter.addYellowLine(
                     buildId = buildId,
                     message = "流水线被用户终止，操作人:$userId",

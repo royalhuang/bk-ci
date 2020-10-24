@@ -94,6 +94,7 @@ class QualityRuleCheckService @Autowired constructor(
 
     fun getMatchRuleListByCache(projectId: String, pipelineId: String): List<QualityRuleMatchTask> {
         val cacheData = qualityCacheService.getCacheRuleListByPipelineId(projectId, pipelineId)
+        logger.info("getMatchRuleListByCache |$projectId| $pipelineId| $cacheData")
         if (cacheData != null) {
             return cacheData
         }
@@ -113,6 +114,7 @@ class QualityRuleCheckService @Autowired constructor(
     fun getMatchTemplateListByCache(projectId: String, templateId: String?): List<QualityRuleMatchTask> {
         if (templateId.isNullOrBlank()) return listOf()
         val cacheData = qualityCacheService.getCacheRuleListByTemplateId(projectId, templateId!!)
+        logger.info("getMatchTemplateListByCache |$projectId| $templateId| $cacheData")
         if (cacheData != null) {
             return cacheData
         }

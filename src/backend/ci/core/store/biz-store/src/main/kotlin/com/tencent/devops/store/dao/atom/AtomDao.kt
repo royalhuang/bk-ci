@@ -588,6 +588,9 @@ class AtomDao : AtomBaseDao() {
                     baseStep.set(PRIVATE_REASON, privateReason)
                 }
             }
+            if (null != atomUpdateRequest.iconData) {
+                baseStep.set(ICON, atomUpdateRequest.iconData)
+            }
             baseStep.set(UPDATE_TIME, LocalDateTime.now())
                 .set(MODIFIER, userId)
                 .where(ID.eq(id))
