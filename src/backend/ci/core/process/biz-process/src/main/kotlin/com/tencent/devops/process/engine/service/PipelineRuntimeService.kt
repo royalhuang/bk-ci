@@ -1088,7 +1088,7 @@ class PipelineRuntimeService @Autowired constructor(
                 projectId = pipelineInfo.projectId,
                 pipelineId = pipelineInfo.pipelineId,
                 buildId = buildId,
-                variables = startParamsWithType.map { it.key to it.value }.toMap()
+                variables = startParamsWithType
             )
 
             // 上一次存在的需要重试的任务直接Update，否则就插入
@@ -1415,7 +1415,7 @@ class PipelineRuntimeService @Autowired constructor(
                         if (result != 1) {
                             logger.info("[{}]|taskId={}| update task param failed|result:{}", buildId, taskId, result)
                         }
-                        buildVariableService.batchSetVariable(
+                        buildVariableService.batchUpdateVariable(
                             projectId = projectId,
                             pipelineId = pipelineId,
                             buildId = buildId,
@@ -1952,6 +1952,19 @@ class PipelineRuntimeService @Autowired constructor(
                 pipelineId = pipelineId,
                 buildId = buildId,
                 param = JsonUtil.getObjectMapper().writeValueAsString(params)
+            )
+        }
+    }
+
+    private fun addTraceVar(projectId: String, pipelineId: String, buildId: String) {
+        val bizId = MDC.get(TraceTag.BIZID)
+        if (!bizId.isNullOrEmpty()) {
+            buildVariableService.batchSetVariable(
+                dslContext = dslContext,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                buildId = buildId,
+                variables = listOf(BuildParameters(TraceTag.TRACE_HEADER_DEVOPS_BIZID, MDC.get(TraceTag.BIZID)))
             )
         }
     }
