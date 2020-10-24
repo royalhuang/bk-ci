@@ -76,28 +76,32 @@ class PipelineBuildHeartbeatListener @Autowired constructor(
                         return
                     }
 
-                // #2365 在Set Up Job位置记录心跳超时信息
-                buildLogPrinter.addRedLine(
-                    buildId = buildId,
-                    message = "构建任务对应的Agent的心跳超时/Agent's heartbeat is lost for a long time(${TimeUnit.MILLISECONDS.toSeconds(elapse)} sec)",
-                    tag = VMUtils.genStartVMTaskId(containerId),
-                    jobId = containerId,
-                    executeCount = container.executeCount
-                )
-
+                var found = false
                 // #2365 在运行中的插件中记录心跳超时信息
                 val runningTask = pipelineRuntimeService.getRunningTask(projectId, buildId)
                 runningTask.forEach { taskMap ->
                     if (containerId == taskMap["containerId"] && taskMap["taskId"] != null) {
+                        found = true
                         val executeCount = taskMap["executeCount"]?.toString()?.toInt() ?: 1
                         buildLogPrinter.addRedLine(
                             buildId = buildId,
-                            message = "构建任务对应的Agent的心跳超时/Agent's heartbeat is lost for a long time(${TimeUnit.MILLISECONDS.toSeconds(elapse)} sec)",
+                            message = "构建任务对应的Agent的心跳超时/Agent's heartbeat has been lost for a long time(${TimeUnit.MILLISECONDS.toSeconds(elapse)} sec)",
                             tag = taskMap["taskId"].toString(),
                             jobId = containerId,
                             executeCount = executeCount
                         )
                     }
+                }
+
+                if (!found) {
+                    // #2365 在Set Up Job位置记录心跳超时信息
+                    buildLogPrinter.addRedLine(
+                        buildId = buildId,
+                        message = "构建任务对应的Agent的心跳超时/Agent's heartbeat has been lost for a long time(${TimeUnit.MILLISECONDS.toSeconds(elapse)} sec)",
+                        tag = VMUtils.genStartVMTaskId(containerId),
+                        jobId = containerId,
+                        executeCount = container.executeCount
+                    )
                 }
 
                 // 终止当前容器下的任务
