@@ -1538,7 +1538,6 @@ class PipelineBuildService(
             }
 
             val tasks = getRunningTask(projectId, buildId)
-            val jobIdAndTagMap = mutableMapOf<String, String>()
 
             tasks.forEach { task ->
                 val taskId = task["taskId"].toString() ?: ""
@@ -1553,18 +1552,6 @@ class PipelineBuildService(
                     jobId = containerId,
                     executeCount = executeCount
                 )
-
-                jobIdAndTagMap.computeIfAbsent(containerId) {
-                    val tag = VMUtils.genStartVMTaskId(containerId)
-                    buildLogPrinter.addYellowLine(
-                        buildId = buildId,
-                        message = "流水线被用户终止，操作人:$userId",
-                        tag = tag,
-                        jobId = containerId,
-                        executeCount = executeCount
-                    )
-                    return@computeIfAbsent tag
-                }
             }
 
             if (tasks.isEmpty()) {
