@@ -29,16 +29,18 @@ package com.tencent.devops.process.engine.listener.run.monitor
 import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatcher
 import com.tencent.devops.common.event.enums.ActionType
 import com.tencent.devops.common.event.listener.pipeline.BaseListener
+import com.tencent.devops.common.log.utils.BuildLogPrinter
 import com.tencent.devops.common.pipeline.enums.BuildStatus
 import com.tencent.devops.common.pipeline.utils.HeartBeatUtils
 import com.tencent.devops.common.redis.RedisOperation
-import com.tencent.devops.common.log.utils.BuildLogPrinter
+import com.tencent.devops.process.engine.common.VMUtils
 import com.tencent.devops.process.engine.pojo.event.PipelineContainerAgentHeartBeatEvent
 import com.tencent.devops.process.engine.service.PipelineBuildDetailService
 import com.tencent.devops.process.engine.service.PipelineRuntimeService
 import com.tencent.devops.process.pojo.mq.PipelineBuildContainerEvent
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
+import java.util.concurrent.TimeUnit
 
 /**
  *  MQ实现的流水线构建心跳事件
@@ -66,32 +68,36 @@ class PipelineBuildHeartbeatListener @Autowired constructor(
             }
             val elapse = System.currentTimeMillis() - lastUpdate.toLong()
             if (elapse > TIMEOUT_IN_MS) {
-                logger.error("The build($buildId) is timeout for ${elapse}ms, terminate it")
+                logger.warn("The build($buildId) is timeout for ${elapse}ms, terminate it")
+
+                val container = pipelineRuntimeService.getContainer(buildId = buildId, stageId = null, containerId = containerId)
+                    ?: run {
+                        logger.warn("[$buildId]|heartbeat timeout|can not find Job#$containerId")
+                        return
+                    }
+
+                // #2365 在Set Up Job位置记录心跳超时信息
                 buildLogPrinter.addRedLine(
                     buildId = buildId,
-                    message = "构建任务对应的Agent的心跳超时，请检查Agent的状态",
-                    tag = "",
+                    message = "构建任务对应的Agent的心跳超时/Agent's heartbeat is lost for a long time(${TimeUnit.MILLISECONDS.toSeconds(elapse)} sec)",
+                    tag = VMUtils.genStartVMTaskId(containerId),
                     jobId = containerId,
-                    executeCount = 1
+                    executeCount = container.executeCount
                 )
-                var stageId: String? = null
-                var containerType = "vmBuild"
-                val modelDetail = buildDetailService.get(buildId) ?: return
-                run outer@{
-                    modelDetail.model.stages.forEach { stage ->
-                        stage.containers.forEach { c ->
-                            if (c.id == containerId) {
-                                stageId = stage.id!!
-                                containerType = c.getClassType()
-                                return@outer
-                            }
-                        }
-                    }
-                }
 
-                if (stageId.isNullOrBlank()) {
-                    logger.warn("[$buildId]|heartbeat timeout|can not find stage")
-                    return
+                // #2365 在运行中的插件中记录心跳超时信息
+                val runningTask = pipelineRuntimeService.getRunningTask(projectId, buildId)
+                runningTask.forEach { taskMap ->
+                    if (containerId == taskMap["containerId"] && taskMap["taskId"] != null) {
+                        val executeCount = taskMap["executeCount"]?.toString()?.toInt() ?: 1
+                        buildLogPrinter.addRedLine(
+                            buildId = buildId,
+                            message = "构建任务对应的Agent的心跳超时/Agent's heartbeat is lost for a long time(${TimeUnit.MILLISECONDS.toSeconds(elapse)} sec)",
+                            tag = taskMap["taskId"].toString(),
+                            jobId = containerId,
+                            executeCount = executeCount
+                        )
+                    }
                 }
 
                 // 终止当前容器下的任务
@@ -102,9 +108,9 @@ class PipelineBuildHeartbeatListener @Autowired constructor(
                         pipelineId = pipelineId,
                         userId = userId,
                         buildId = buildId,
-                        stageId = stageId!!,
+                        stageId = container.stageId,
                         containerId = containerId,
-                        containerType = containerType,
+                        containerType = container.containerType,
                         actionType = ActionType.TERMINATE,
                         reason = "构建任务对应的Agent的心跳超时，请检查Agent的状态"
                     )
