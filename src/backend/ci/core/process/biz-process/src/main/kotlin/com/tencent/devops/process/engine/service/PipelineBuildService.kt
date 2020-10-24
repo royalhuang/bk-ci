@@ -58,6 +58,7 @@ import com.tencent.devops.common.service.utils.HomeHostUtil
 import com.tencent.devops.common.service.utils.MessageCodeUtil
 import com.tencent.devops.common.log.utils.BuildLogPrinter
 import com.tencent.devops.process.constant.ProcessMessageCode
+import com.tencent.devops.process.engine.common.VMUtils
 import com.tencent.devops.process.engine.compatibility.BuildParametersCompatibilityTransformer
 import com.tencent.devops.process.engine.compatibility.BuildPropertyCompatibilityTools
 import com.tencent.devops.process.engine.control.lock.BuildIdLock
@@ -1509,23 +1510,36 @@ class PipelineBuildService(
             }
 
             val tasks = getRunningTask(projectId, buildId)
+            val jobIdAndTagMap = mutableMapOf<String, String>()
 
             tasks.forEach { task ->
-                val taskId = task["taskId"] ?: ""
-                val containerId = task["containerId"] ?: ""
+                val taskId = task["taskId"].toString() ?: ""
+                val containerId = task["containerId"]?.toString() ?: ""
                 val status = task["status"] ?: ""
-                val executeCount = task["executeCount"] ?: 1
+                val executeCount = task["executeCount"]?.toString()?.toInt() ?: 1
                 logger.info("build($buildId) shutdown by $userId, taskId: $taskId, status: $status")
                 buildLogPrinter.addYellowLine(
                     buildId = buildId,
                     message = "流水线被用户终止，操作人:$userId",
-                    tag = taskId.toString(),
-                    jobId = containerId.toString(),
-                    executeCount = executeCount as Int
+                    tag = taskId,
+                    jobId = containerId,
+                    executeCount = executeCount
                 )
+
+                jobIdAndTagMap.computeIfAbsent(containerId) {
+                    val tag = VMUtils.genStartVMTaskId(containerId)
+                    buildLogPrinter.addYellowLine(
+                        buildId = buildId,
+                        message = "流水线被用户终止，操作人:$userId",
+                        tag = tag,
+                        jobId = containerId,
+                        executeCount = executeCount
+                    )
+                    return@computeIfAbsent tag
+                }
             }
 
-            if (tasks.isNotEmpty()) {
+            if (jobIdAndTagMap.isNotEmpty()) {
                 buildLogPrinter.addYellowLine(
                     buildId = buildId,
                     message = "流水线被用户终止，操作人:$userId",
