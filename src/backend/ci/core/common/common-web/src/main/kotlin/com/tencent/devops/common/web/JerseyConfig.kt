@@ -27,7 +27,7 @@
 package com.tencent.devops.common.web
 
 import com.tencent.devops.common.web.annotation.BkExceptionMapper
-import com.tencent.devops.common.web.handler.BkFieldExceptionMapper
+import org.glassfish.jersey.media.multipart.MultiPartFeature
 import org.glassfish.jersey.server.ResourceConfig
 import org.reflections.Reflections
 import org.slf4j.LoggerFactory
@@ -49,7 +49,7 @@ open class JerseyConfig : ResourceConfig(), ApplicationContextAware, Initializin
     override fun afterPropertiesSet() {
         logger.info("JerseyConfig-register-start")
         register(ValidationConfigurationContextResolver::class.java)
-        register(BkFieldExceptionMapper::class.java)
+        register(MultiPartFeature::class.java)
         logger.info("JerseyConfig-ExceptionMapper-Spring-find-start")
         val mappers = applicationContext.getBeansWithAnnotation(BkExceptionMapper::class.java)
         logger.info("JerseyConfig-ExceptionMapper-register-start")
