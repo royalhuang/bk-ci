@@ -27,7 +27,27 @@
 package com.tencent.devops.common.web
 
 import com.tencent.devops.common.web.annotation.BkExceptionMapper
+import com.tencent.devops.common.web.handler.AllExceptionMapper
+import com.tencent.devops.common.web.handler.BadRequestExceptionMapper
 import com.tencent.devops.common.web.handler.BkFieldExceptionMapper
+import com.tencent.devops.common.web.handler.ClientExceptionMapper
+import com.tencent.devops.common.web.handler.CodeccReportExceptionMapper
+import com.tencent.devops.common.web.handler.CustomExceptionMapper
+import com.tencent.devops.common.web.handler.DependNotFoundExceptionMapper
+import com.tencent.devops.common.web.handler.ErrorCodeExceptionMapper
+import com.tencent.devops.common.web.handler.IllegalArgumentExceptionMapper
+import com.tencent.devops.common.web.handler.JsonMappingExceptionMapper
+import com.tencent.devops.common.web.handler.MissingKotlinParameterExceptionMapper
+import com.tencent.devops.common.web.handler.NotFoundExceptionMapper
+import com.tencent.devops.common.web.handler.OperationExceptionMapper
+import com.tencent.devops.common.web.handler.ParamBlankExceptionMapper
+import com.tencent.devops.common.web.handler.ParamExceptionMapper
+import com.tencent.devops.common.web.handler.PermissionForbiddenExceptionMapper
+import com.tencent.devops.common.web.handler.PipelineAlreadyExistExceptionMapper
+import com.tencent.devops.common.web.handler.RemoteServiceExceptionMapper
+import com.tencent.devops.common.web.handler.RuntimeExceptionMapper
+import com.tencent.devops.common.web.handler.UnauthorizedExceptionMapper
+import org.glassfish.jersey.media.multipart.MultiPartFeature
 import org.glassfish.jersey.server.ResourceConfig
 import org.reflections.Reflections
 import org.slf4j.LoggerFactory
@@ -49,7 +69,28 @@ open class JerseyConfig : ResourceConfig(), ApplicationContextAware, Initializin
     override fun afterPropertiesSet() {
         logger.info("JerseyConfig-register-start")
         register(ValidationConfigurationContextResolver::class.java)
+        register(DependNotFoundExceptionMapper::class.java)
+        register(ParamBlankExceptionMapper::class.java)
+        register(IllegalArgumentExceptionMapper::class.java)
+        register(ParamExceptionMapper::class.java)
+        register(MissingKotlinParameterExceptionMapper::class.java)
+        register(BadRequestExceptionMapper::class.java)
+        register(NotFoundExceptionMapper::class.java)
+        register(ClientExceptionMapper::class.java)
+        register(RemoteServiceExceptionMapper::class.java)
+        register(OperationExceptionMapper::class.java)
+        register(UnauthorizedExceptionMapper::class.java)
+        register(JsonMappingExceptionMapper::class.java)
+        register(RuntimeExceptionMapper::class.java)
+        register(AllExceptionMapper::class.java)
+        register(MultiPartFeature::class.java)
+        register(PipelineAlreadyExistExceptionMapper::class.java)
+        register(CustomExceptionMapper::class.java)
+        register(PermissionForbiddenExceptionMapper::class.java)
+        register(CodeccReportExceptionMapper::class.java)
+        register(ErrorCodeExceptionMapper::class.java)
         register(BkFieldExceptionMapper::class.java)
+        register(JsonMappingExceptionMapper::class.java)
         logger.info("JerseyConfig-ExceptionMapper-Spring-find-start")
         val mappers = applicationContext.getBeansWithAnnotation(BkExceptionMapper::class.java)
         logger.info("JerseyConfig-ExceptionMapper-register-start")
