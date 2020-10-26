@@ -27,26 +27,6 @@
 package com.tencent.devops.common.web
 
 import com.tencent.devops.common.web.annotation.BkExceptionMapper
-import com.tencent.devops.common.web.handler.AllExceptionMapper
-import com.tencent.devops.common.web.handler.BadRequestExceptionMapper
-import com.tencent.devops.common.web.handler.BkFieldExceptionMapper
-import com.tencent.devops.common.web.handler.ClientExceptionMapper
-import com.tencent.devops.common.web.handler.CodeccReportExceptionMapper
-import com.tencent.devops.common.web.handler.CustomExceptionMapper
-import com.tencent.devops.common.web.handler.DependNotFoundExceptionMapper
-import com.tencent.devops.common.web.handler.ErrorCodeExceptionMapper
-import com.tencent.devops.common.web.handler.IllegalArgumentExceptionMapper
-import com.tencent.devops.common.web.handler.JsonMappingExceptionMapper
-import com.tencent.devops.common.web.handler.MissingKotlinParameterExceptionMapper
-import com.tencent.devops.common.web.handler.NotFoundExceptionMapper
-import com.tencent.devops.common.web.handler.OperationExceptionMapper
-import com.tencent.devops.common.web.handler.ParamBlankExceptionMapper
-import com.tencent.devops.common.web.handler.ParamExceptionMapper
-import com.tencent.devops.common.web.handler.PermissionForbiddenExceptionMapper
-import com.tencent.devops.common.web.handler.PipelineAlreadyExistExceptionMapper
-import com.tencent.devops.common.web.handler.RemoteServiceExceptionMapper
-import com.tencent.devops.common.web.handler.RuntimeExceptionMapper
-import com.tencent.devops.common.web.handler.UnauthorizedExceptionMapper
 import org.glassfish.jersey.media.multipart.MultiPartFeature
 import org.glassfish.jersey.server.ResourceConfig
 import org.reflections.Reflections
