@@ -28,10 +28,12 @@ package com.tencent.devops.common.web
 
 import com.tencent.devops.common.web.annotation.BkExceptionMapper
 import org.glassfish.jersey.server.ResourceConfig
+import org.reflections.Reflections
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.context.ApplicationContext
 import org.springframework.context.ApplicationContextAware
+import java.lang.reflect.Modifier
 import javax.ws.rs.ApplicationPath
 
 @ApplicationPath("/api")
@@ -45,11 +47,21 @@ open class JerseyConfig : ResourceConfig(), ApplicationContextAware, Initializin
 
     override fun afterPropertiesSet() {
         logger.info("JerseyConfig-register-start")
+        logger.info("JerseyConfig-ExceptionMapper-Spring-find-start")
         val mappers = applicationContext.getBeansWithAnnotation(BkExceptionMapper::class.java)
         logger.info("JerseyConfig-ExceptionMapper-register-start")
         mappers.values.forEach {
             logger.info("ExceptionMapper: $it")
             register(it)
+        }
+        logger.info("JerseyConfig-BkExceptionMapper-Reflect-find-start")
+        val reflections = Reflections("com.tencent.devops.common.web.handler")
+        val handlerClasses = reflections.getTypesAnnotatedWith(BkExceptionMapper::class.java)
+        handlerClasses?.forEach { handlerClazz ->
+            if (!Modifier.isAbstract(handlerClazz.modifiers)) {
+                logger.info("Reflect-BkExceptionMapper: $handlerClazz")
+                register(handlerClazz)
+            }
         }
         logger.info("JerseyConfig-ExceptionMapper-register-end")
         logger.info("JerseyConfig-RestResource-find-start")
