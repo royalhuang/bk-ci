@@ -47,6 +47,7 @@ open class JerseyConfig : ResourceConfig(), ApplicationContextAware, Initializin
 
     override fun afterPropertiesSet() {
         logger.info("JerseyConfig-register-start")
+        register(ValidationConfigurationContextResolver::class.java)
         logger.info("JerseyConfig-ExceptionMapper-Spring-find-start")
         val mappers = applicationContext.getBeansWithAnnotation(BkExceptionMapper::class.java)
         logger.info("JerseyConfig-ExceptionMapper-register-start")
