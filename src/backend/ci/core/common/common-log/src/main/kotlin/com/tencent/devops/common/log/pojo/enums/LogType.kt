@@ -35,6 +35,8 @@ enum class LogType {
     START,
     @ApiModelProperty("结束日志")
     END,
-    @ApiModelProperty("普通的日志")
-    LOG
+    @ApiModelProperty("普通日志")
+    LOG,
+    @ApiModelProperty("调试日志")
+    DEBUG
 }

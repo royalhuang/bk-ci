@@ -59,6 +59,25 @@ class BuildLogPrinter(
         logMQEventDispatcher.dispatch(LogEvent(buildId, logMessages))
     }
 
+    fun addDebugLine(
+        buildId: String,
+        message: String,
+        tag: String,
+        subTag: String? = null,
+        jobId: String? = null,
+        executeCount: Int
+    ) {
+        logMQEventDispatcher.dispatch(genLogEvent(
+            buildId = buildId,
+            message = message,
+            tag = tag,
+            subTag = subTag,
+            jobId = jobId,
+            logType = LogType.DEBUG,
+            executeCount = executeCount
+        ))
+    }
+
     fun addFoldStartLine(
         buildId: String,
         groupName: String,

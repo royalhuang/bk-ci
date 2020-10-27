@@ -211,6 +211,18 @@ object LoggerService {
         addLog(logMessage)
     }
 
+    fun addDebugLine(message: String) {
+        val logMessage = LogMessage(
+            message = message,
+            timestamp = System.currentTimeMillis(),
+            tag = elementId,
+            jobId = jobId,
+            logType = LogType.DEBUG,
+            executeCount = executeCount
+        )
+        addLog(logMessage)
+    }
+
     fun addRangeStartLine(rangeName: String) {
         val logMessage = LogMessage(
             message = "[START] $rangeName",
