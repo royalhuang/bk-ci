@@ -484,7 +484,7 @@ class DockerHostBuildService(
                 .withBaseDirectory(baseDirectory)
                 // .withDockerfile(dockerfile)
                 .withDockerfilePath(dockerfilePath)
-                .withTags(setOf(imageNameTag))
+                .withTags(imageNameTagSet)
             args.map { it.trim().split("=") }.forEach {
                 step.withBuildArg(it.first(), it.last())
             }
