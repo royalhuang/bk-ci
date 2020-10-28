@@ -35,12 +35,9 @@ import com.tencent.devops.common.auth.code.BSPipelineAuthServiceCode
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatcher
 import com.tencent.devops.common.event.enums.ActionType
-import com.tencent.devops.common.pipeline.Model
-import com.tencent.devops.common.pipeline.container.TriggerContainer
 import com.tencent.devops.common.pipeline.enums.BuildStatus
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.pipeline.enums.StartType
-import com.tencent.devops.common.pipeline.pojo.BuildNoType
 import com.tencent.devops.common.service.utils.HomeHostUtil
 import com.tencent.devops.common.wechatwork.WechatWorkService
 import com.tencent.devops.common.wechatwork.model.enums.ReceiverType
@@ -209,7 +206,6 @@ class PipelineSubscriptionService @Autowired(required = false) constructor(
         val originTriggerType = executionVar.originTriggerType
 
         val model = pipelineRepositoryService.getModel(pipelineId)
-        setBuildNo(pipelineId, model, shutdownType)
         // Add the measure data
         measureService?.postPipelineData(
             projectId = projectId,
@@ -400,51 +396,6 @@ class PipelineSubscriptionService @Autowired(required = false) constructor(
             user = buildUser,
             isMobileStart = isMobileStart ?: false
         )
-    }
-
-    private fun setBuildNo(pipelineId: String, model: Model?, shutdownType: Int) {
-        if (model == null) {
-            logger.warn("The pipeline definition is null")
-            return
-        }
-
-        val triggerContainer = model.stages[0].containers[0] as TriggerContainer
-
-        if (triggerContainer.buildNo != null) {
-
-            logger.warn("The build no of pipeline($pipelineId) is not exist in db")
-            val buildSummary = pipelineRuntimeService.getBuildSummaryRecord(pipelineId)
-            if (buildSummary == null || buildSummary.buildNo == null) {
-                logger.warn("The pipeline[$pipelineId] don't has the build no")
-                return
-            }
-
-            val currentBuildNo = buildSummary.buildNo
-
-            var needUpdateBuildNoDB = false
-
-            val buildNo = when (triggerContainer.buildNo!!.buildNoType) {
-                BuildNoType.CONSISTENT -> {
-                    currentBuildNo
-                }
-                BuildNoType.SUCCESS_BUILD_INCREMENT -> {
-                    if (shutdownType == TYPE_SHUTDOWN_SUCCESS) {
-                        needUpdateBuildNoDB = true
-                        currentBuildNo + 1
-                    } else {
-                        currentBuildNo
-                    }
-                }
-                BuildNoType.EVERY_BUILD_INCREMENT -> {
-                    needUpdateBuildNoDB = true
-                    currentBuildNo + 1
-                }
-            }
-
-            if (needUpdateBuildNoDB) {
-                pipelineRuntimeService.updateBuildNo(pipelineId, buildNo)
-            }
-        }
     }
 
     private fun checkPipelineCall(pipelineId: String, buildId: String, vars: Map<String, String>) {
