@@ -815,6 +815,7 @@ class PipelineRuntimeService @Autowired constructor(
 
                 if (container is TriggerContainer) { // 寻找触发点
                     val buildNoObj = container.buildNo
+                    logger.info("The pipeline[$pipelineId] buildNoObj:$buildNoObj")
                     if (buildNoObj != null) {
                             val buildNoType = buildNoObj.buildNoType
                             if (buildNoType == BuildNoType.CONSISTENT) {
@@ -834,6 +835,7 @@ class PipelineRuntimeService @Autowired constructor(
                                 }
                                 // buildNo根据数据库的记录值每次新增1
                                 currentBuildNo = buildSummary.buildNo + 1
+                                logger.info("The pipeline[$pipelineId] currentBuildNo:$currentBuildNo")
                                 updateBuildNo(pipelineId, currentBuildNo!!)
                             }
                     }
