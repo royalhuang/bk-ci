@@ -436,7 +436,7 @@ open class MarketAtomTask : ITask() {
         if (monitorData != null) {
             addMonitorData(monitorData)
         }
-        deletePluginFile(atomTmpSpace)
+//        deletePluginFile(atomTmpSpace) // just for test
         val success: Boolean
         if (atomResult == null) {
             LoggerService.addYellowLine("No output")
