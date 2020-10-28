@@ -390,9 +390,9 @@ open class MarketAtomTask : ITask() {
 
     private fun writeParamEnv(tmpWorkspace: File, workspace: File, buildTask: BuildTask, buildVariables: BuildVariables) {
         val param = mapOf(
-            "workspace" to workspace,
-            "buildTask" to buildTask,
-            "buildVariables" to buildVariables
+            "workspace" to jacksonObjectMapper().writeValueAsString(workspace),
+            "buildTask" to jacksonObjectMapper().writeValueAsString(buildTask),
+            "buildVariables" to jacksonObjectMapper().writeValueAsString(buildVariables)
         )
         val paramStr = jacksonObjectMapper().writeValueAsString(param)
         val inputFileFile = File(tmpWorkspace, paramFile)
