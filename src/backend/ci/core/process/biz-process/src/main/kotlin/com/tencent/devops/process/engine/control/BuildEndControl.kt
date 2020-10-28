@@ -170,12 +170,14 @@ class BuildEndControl @Autowired constructor(
     }
 
     private fun setBuildNo(pipelineId: String, model: Model?, buildStatus: BuildStatus) {
+        logger.info("setBuildNo pipeline[$pipelineId], model:$model, buildStatus:$buildStatus")
         if (model == null) {
             logger.warn("The pipeline definition is null")
             return
         }
         val triggerContainer = model.stages[0].containers[0] as TriggerContainer
         val buildNoObj = triggerContainer.buildNo
+        logger.info("setBuildNo pipeline[$pipelineId], buildNoObj:$buildNoObj")
         if (buildNoObj != null) {
             // 使用分布式锁防止并发更新
             val buildNoLock = PipelineBuildNoLock(redisOperation, pipelineId)
@@ -190,6 +192,7 @@ class BuildEndControl @Autowired constructor(
                     }
                     val currentBuildNo = buildSummary.buildNo
                     if (!BuildStatus.isCancel(buildStatus) && !BuildStatus.isFailure(buildStatus)) {
+                        logger.info("setBuildNo pipeline[$pipelineId], currentBuildNo:${currentBuildNo+1}")
                         pipelineRuntimeService.updateBuildNo(pipelineId, currentBuildNo + 1)
                     }
                 }
