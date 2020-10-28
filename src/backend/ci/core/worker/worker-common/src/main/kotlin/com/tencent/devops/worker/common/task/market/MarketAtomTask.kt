@@ -26,6 +26,7 @@
 
 package com.tencent.devops.worker.common.task.market
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.tencent.devops.common.api.enums.OSType
 import com.tencent.devops.common.api.exception.TaskExecuteException
 import com.tencent.devops.common.api.pojo.ErrorCode
@@ -73,6 +74,7 @@ open class MarketAtomTask : ITask() {
     private val inputFile = "input.json"
 
     private val sdkFile = ".sdk.json"
+    private val paramFile = ".param.json"
 
     private lateinit var atomExecuteFile: File
 
@@ -205,6 +207,7 @@ open class MarketAtomTask : ITask() {
         writeInputFile(atomTmpSpace, variables.plus(atomSensitiveDataMap))
 
         writeSdkEnv(atomTmpSpace, buildTask, buildVariables)
+        writeParamEnv(atomTmpSpace, workspace, buildTask, buildVariables)
 
         val javaFile = getJavaFile()
         val environment = runtimeVariables.plus(
@@ -383,6 +386,19 @@ open class MarketAtomTask : ITask() {
         }
         logger.info("sdkEnv is:$sdkEnv")
         inputFileFile.writeText(JsonUtil.toJson(sdkEnv))
+    }
+
+    private fun writeParamEnv(tmpWorkspace: File, workspace: File, buildTask: BuildTask, buildVariables: BuildVariables) {
+        val param = mapOf(
+            "workspace" to workspace,
+            "buildTask" to buildTask,
+            "buildVariables" to buildVariables
+        )
+        val paramStr = jacksonObjectMapper().writeValueAsString(param)
+        val inputFileFile = File(tmpWorkspace, paramFile)
+
+        logger.info("paramFile is:$paramFile")
+        inputFileFile.writeText(paramStr)
     }
 
     data class SdkEnv(
