@@ -39,9 +39,11 @@ import com.tencent.devops.common.pipeline.Model
 import com.tencent.devops.common.pipeline.container.TriggerContainer
 import com.tencent.devops.common.pipeline.container.VMBuildContainer
 import com.tencent.devops.common.pipeline.enums.BuildStatus
+import com.tencent.devops.common.pipeline.pojo.BuildNoType
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.common.service.utils.CommonUtils
 import com.tencent.devops.process.engine.control.lock.BuildIdLock
+import com.tencent.devops.process.engine.control.lock.PipelineBuildNoLock
 import com.tencent.devops.process.engine.control.lock.PipelineBuildStartLock
 import com.tencent.devops.process.engine.pojo.BuildInfo
 import com.tencent.devops.process.engine.pojo.LatestRunningBuild
@@ -123,11 +125,9 @@ class BuildEndControl @Autowired constructor(
 
         fixTask(buildInfo, buildStatus)
 
-
         // 更新buildNo
         val model = pipelineRepositoryService.getModel(pipelineId)
         setBuildNo(pipelineId = pipelineId, model = model, buildStatus = buildStatus)
-
 
         // 记录本流水线最后一次构建的状态
         pipelineRuntimeService.finishLatestRunningBuild(

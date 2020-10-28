@@ -485,11 +485,6 @@ class PipelineBuildService(
                 }
             }
 
-            if (buildNo != null) {
-                pipelineRuntimeService.updateBuildNo(pipelineId, buildNo)
-                logger.info("[$pipelineId] buildNo was changed to [$buildNo]")
-            }
-
             val startParamsWithType = buildParamCompatibilityTransformer.parseManualStartParam(triggerContainer.params, values)
 
             model.stages.forEachIndexed { index, stage ->
