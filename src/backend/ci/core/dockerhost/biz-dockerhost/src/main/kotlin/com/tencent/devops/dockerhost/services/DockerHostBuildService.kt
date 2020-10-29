@@ -481,7 +481,7 @@ class DockerHostBuildService(
             val step = dockerClient.buildImageCmd().withNoCache(true)
                 .withPull(true)
                 .withBuildAuthConfigs(authConfigurations)
-                .withBaseDirectory(baseDirectory)
+                // .withBaseDirectory(baseDirectory)
                 // .withDockerfile(dockerfile)
                 .withDockerfilePath(dockerBuildParam.dockerFile)
                 .withTags(imageNameTagSet)
