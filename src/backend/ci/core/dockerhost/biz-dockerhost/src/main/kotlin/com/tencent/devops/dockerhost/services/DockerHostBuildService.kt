@@ -443,7 +443,7 @@ class DockerHostBuildService(
 
             val workspace = getWorkspace(pipelineId, vmSeqId.toInt(), dockerBuildParam.poolNo ?: "0")
             val buildDir = Paths.get(workspace + dockerBuildParam.buildDir).normalize().toString()
-            val dockerfilePath = Paths.get(dockerBuildParam.dockerFile!!).normalize().toString()
+            val dockerfilePath = Paths.get(workspace + dockerBuildParam.dockerFile).normalize().toString()
             val baseDirectory = File(buildDir)
             val dockerfile = File(dockerfilePath)
 /*            val imageNameTag =
