@@ -226,6 +226,7 @@ open class CodeccApi constructor(
         headers: Map<String, String>? = null,
         method: String = "GET"
     ): String {
+        logger.info("taskExecution path:$path,headers:$headers,body:$body")
         val jsonBody = objectMapper.writeValueAsString(body)
         val requestBody = RequestBody.create(
             MediaType.parse("application/json; charset=utf-8"), jsonBody
