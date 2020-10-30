@@ -151,7 +151,6 @@ class StoreCommonServiceImpl @Autowired constructor(
                     item.status = SUCCESS
                 } else {
                     item.status = status
-                    item.name += if (status == FAIL) MessageCodeUtil.getCodeLanMessage(FAIL) else ""
                 }
             }
         }
