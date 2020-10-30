@@ -24,7 +24,7 @@ class TraceFilter : Filter {
         } else {
             MDC.put(TraceTag.BIZID, bizId)
         }
-        logger.debug("servlet Filter bizId ${MDC.get(TraceTag.BIZID)}")
+        logger.info("servlet Filter bizId ${MDC.get(TraceTag.BIZID)}")
         chain?.doFilter(request, response)
     }
 
