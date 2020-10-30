@@ -104,6 +104,8 @@ object CommandLineUtils {
             logger.warn("Fail to execute the command($command)", ignored)
             if (print2Logger) {
                 LoggerService.addRedLine("$prefix Fail to execute the command($command)")
+            } else {
+                LoggerService.flush()
             }
             throw TaskExecuteException(
                 errorType = ErrorType.SYSTEM,

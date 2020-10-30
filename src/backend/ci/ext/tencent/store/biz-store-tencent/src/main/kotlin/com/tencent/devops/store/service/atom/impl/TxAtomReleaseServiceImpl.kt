@@ -308,6 +308,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
 
     override fun doPassTestPreOperation(atomId: String, atomStatus: Byte, userId: String) {
         marketAtomDao.setAtomStatusById(dslContext, atomId, atomStatus, userId, "")
+        storeWebsocketService.sendWebsocketMessage(userId, atomId)
     }
 
     override fun getAfterValidatePassTestStatus(validateFlag: Boolean, isNormalUpgrade: Boolean): Byte {
