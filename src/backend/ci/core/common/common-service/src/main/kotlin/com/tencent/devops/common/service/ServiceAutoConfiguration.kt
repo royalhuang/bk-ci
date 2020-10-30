@@ -73,5 +73,4 @@ class ServiceAutoConfiguration {
 
     @Bean
     fun traceFilter() = TraceFilter()
-
 }
