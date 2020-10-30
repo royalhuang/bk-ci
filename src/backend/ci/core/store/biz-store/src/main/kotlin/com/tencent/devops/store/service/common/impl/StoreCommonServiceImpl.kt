@@ -26,10 +26,8 @@
 
 package com.tencent.devops.store.service.common.impl
 
-import com.tencent.devops.common.api.constant.FAIL
 import com.tencent.devops.common.api.constant.INIT_VERSION
 import com.tencent.devops.common.api.constant.SUCCESS
-import com.tencent.devops.common.service.utils.MessageCodeUtil
 import com.tencent.devops.common.service.utils.SpringContextUtil
 import com.tencent.devops.store.configuration.StoreDetailUrlConfig
 import com.tencent.devops.store.configuration.StoreRepoNameSpaceNameConfig
