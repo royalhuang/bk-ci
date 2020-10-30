@@ -90,7 +90,7 @@ object ShellUtil {
         prefix: String = "",
         errorMessage: String? = null,
         workspace: File = dir,
-        print2Logger: Boolean = false
+        print2Logger: Boolean = true
     ): String {
         return executeUnixCommand(
             command = getCommandFile(
