@@ -70,6 +70,7 @@ import com.tencent.devops.environment.utils.NodeStringIdUtils
 import com.tencent.devops.model.environment.tables.records.TEnvRecord
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
@@ -205,6 +206,7 @@ class EnvService @Autowired constructor(
     }
 
     override fun listUsableServerEnvs(userId: String, projectId: String): List<EnvWithPermission> {
+        logger.info("listUsableServerEnvs $userId $projectId")
         val envRecordList = envDao.listServerEnv(dslContext, projectId)
         if (envRecordList.isEmpty()) {
             return listOf()
@@ -607,5 +609,9 @@ class EnvService @Autowired constructor(
                     canUse = null
             )
         }
+    }
+
+    companion object{
+        val logger = LoggerFactory.getLogger(this::class.java)
     }
 }
