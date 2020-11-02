@@ -991,8 +991,7 @@ class DockerHostBuildService(
 
     inner class MyBuildImageResultCallback internal constructor(
         private val buildId: String,
-        private val elementId: String?,
-        private val dockerHostBuildApi: DockerHostBuildResourceApi
+        private val elementId: String?
     ) : BuildImageResultCallback() {
         override fun onNext(item: BuildResponseItem?) {
             val text = item?.stream
@@ -1010,8 +1009,7 @@ class DockerHostBuildService(
 
     inner class MyPushImageResultCallback internal constructor(
         private val buildId: String,
-        private val elementId: String?,
-        private val dockerHostBuildApi: DockerHostBuildResourceApi
+        private val elementId: String?
     ) : PushImageResultCallback() {
         private val totalList = mutableListOf<Long>()
         private val step = mutableMapOf<Int, Long>()
@@ -1044,7 +1042,6 @@ class DockerHostBuildService(
 
     inner class MyPullImageResultCallback internal constructor(
         private val buildId: String,
-        private val dockerHostBuildApi: DockerHostBuildResourceApi,
         private val startTaskId: String?,
         private val containerHashId: String?
     ) : PullImageResultCallback() {
