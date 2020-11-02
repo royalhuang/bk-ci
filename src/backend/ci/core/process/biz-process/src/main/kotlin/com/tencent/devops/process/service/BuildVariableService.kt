@@ -26,7 +26,6 @@
 
 package com.tencent.devops.process.service
 
-import com.tencent.devops.common.api.util.EmojiUtil
 import com.tencent.devops.common.pipeline.enums.BuildFormPropertyType
 import com.tencent.devops.common.pipeline.pojo.BuildParameters
 import com.tencent.devops.common.redis.RedisLock
@@ -120,7 +119,13 @@ class BuildVariableService @Autowired constructor(
         }
     }
 
-    fun batchSetVariable(dslContext: DSLContext, projectId: String, pipelineId: String, buildId: String, variables: List<BuildParameters>) {
+    fun batchSetVariable(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        buildId: String,
+        variables: List<BuildParameters>
+    ) {
         val varMaps = variables.map {
             it.key to Pair(it.value.toString(), it.valueType ?: BuildFormPropertyType.STRING)
         }.toMap().toMutableMap()
@@ -130,7 +135,7 @@ class BuildVariableService @Autowired constructor(
         varMaps.forEach { (key, valueAndType) ->
             pipelineBuildParameters.add(BuildParameters(
                 key = key,
-                value = EmojiUtil.removeAllEmoji(valueAndType.first),
+                value = valueAndType.first,
                 valueType = valueAndType.second
             ))
         }
