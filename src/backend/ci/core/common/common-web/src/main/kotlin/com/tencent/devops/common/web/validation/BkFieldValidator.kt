@@ -38,15 +38,12 @@ import javax.validation.ConstraintValidatorContext
 
 class BkFieldValidator : ConstraintValidator<BkField?, Any?> {
 
-    private val logger = LoggerFactory.getLogger(BkFieldValidator::class.java)
-
     override fun initialize(parameters: BkField?) {}
 
     override fun isValid(
         paramValue: Any?,
         constraintValidatorContext: ConstraintValidatorContext
     ): Boolean {
-        logger.info("BkFieldValidator paramValue:$paramValue")
         val constraintDescriptor = (constraintValidatorContext as ConstraintValidatorContextImpl).constraintDescriptor
         val attributes = constraintDescriptor.attributes
         val required = attributes[REQUIRED] as Boolean
@@ -59,7 +56,6 @@ class BkFieldValidator : ConstraintValidator<BkField?, Any?> {
             return false
         }
         val patternStyle = attributes[PATTERN_STYLE] as BkStyleEnum
-        logger.info("BkFieldValidator paramValue:$paramValue,patternStyle:$patternStyle,flag:$flag")
         // 判断参数值是否满足配置的正则表达式规范
         if (!flag && !Pattern.matches(patternStyle.style, paramValue.toString())) {
             return false
