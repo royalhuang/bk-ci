@@ -31,11 +31,14 @@ import com.tencent.devops.common.api.constant.REQUIRED
 import com.tencent.devops.common.web.annotation.BkField
 import com.tencent.devops.common.web.constant.BkStyleEnum
 import org.hibernate.validator.internal.engine.constraintvalidation.ConstraintValidatorContextImpl
+import org.slf4j.LoggerFactory
 import java.util.regex.Pattern
 import javax.validation.ConstraintValidator
 import javax.validation.ConstraintValidatorContext
 
 class BkFieldValidator : ConstraintValidator<BkField?, Any?> {
+
+    private val logger = LoggerFactory.getLogger(BkFieldValidator::class.java)
 
     override fun initialize(parameters: BkField?) {}
 
@@ -43,7 +46,7 @@ class BkFieldValidator : ConstraintValidator<BkField?, Any?> {
         paramValue: Any?,
         constraintValidatorContext: ConstraintValidatorContext
     ): Boolean {
-        println("BkFieldValidator paramValue:$paramValue")
+        logger.info("BkFieldValidator paramValue:$paramValue")
         val constraintDescriptor = (constraintValidatorContext as ConstraintValidatorContextImpl).constraintDescriptor
         val attributes = constraintDescriptor.attributes
         val required = attributes[REQUIRED] as Boolean
