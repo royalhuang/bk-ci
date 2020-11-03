@@ -43,6 +43,7 @@ class BkFieldValidator : ConstraintValidator<BkField?, Any?> {
         paramValue: Any?,
         constraintValidatorContext: ConstraintValidatorContext
     ): Boolean {
+        println("BkFieldValidator paramValue:$paramValue")
         val constraintDescriptor = (constraintValidatorContext as ConstraintValidatorContextImpl).constraintDescriptor
         val attributes = constraintDescriptor.attributes
         val required = attributes[REQUIRED] as Boolean
