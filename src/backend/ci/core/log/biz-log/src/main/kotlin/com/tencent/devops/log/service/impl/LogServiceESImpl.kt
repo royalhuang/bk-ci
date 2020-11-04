@@ -1055,6 +1055,8 @@ class LogServiceESImpl constructor(
             .source(SearchSourceBuilder().query(query))
         return try {
             val countResponse = client.restClient(buildId).count(countRequest, RequestOptions.DEFAULT)
+            logger.info("[$index|$buildId|$tag|$subTag|$jobId|$executeCount] getLogSize, isTerminatedEarly=${countResponse.isTerminatedEarly}, totalShards=${countResponse.totalShards}, successfulShards=${countResponse.successfulShards}, countResponse: ${countResponse.toString()}")
+
             countResponse.count
         } catch (e: Throwable) {
             logger.error("[$buildId] Get log size with error: ${e.printStackTrace()}")
