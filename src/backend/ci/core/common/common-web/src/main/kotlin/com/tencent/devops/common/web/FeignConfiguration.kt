@@ -30,6 +30,7 @@ import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_JWT_TOKEN
 import com.tencent.devops.common.security.jwt.JwtManager
 import com.tencent.devops.common.service.trace.TraceTag
 import feign.RequestInterceptor
+import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
@@ -55,11 +56,14 @@ class FeignConfiguration {
                 requestTemplate.header(languageHeaderName, languageHeaderValue) // 设置Accept-Language请求头
             }
             val bizId = request.getHeader(TraceTag.BIZID)
-            if(bizId.isNullOrEmpty()) {
+            logger.info("bizId: $bizId")
+            if (bizId.isNullOrEmpty()) {
                 if (MDC.get(TraceTag.BIZID).isNullOrEmpty()) {
                     requestTemplate.header(TraceTag.BIZID, MDC.get(TraceTag.BIZID)) // 设置trace请求头
+                    logger.info("mdc  bizId: $bizId, header is empty")
                 } else {
                     requestTemplate.header(TraceTag.BIZID, TraceTag.buildBiz()) // 设置trace请求头
+                    logger.info("mdc build  bizId: $bizId, header is empty")
                 }
             }
             val cookies = request.cookies
@@ -78,5 +82,9 @@ class FeignConfiguration {
                 }
             }
         }
+    }
+
+    companion object {
+        val logger = LoggerFactory.getLogger(this:: class.java)
     }
 }
