@@ -48,11 +48,11 @@ import com.tencent.devops.common.pipeline.pojo.element.Element
     JsonSubTypes.Type(value = SyncLocalCodeTask::class, name = SyncLocalCodeTask.taskType + SyncLocalCodeTask.taskVersion)
 )
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 abstract class AbstractTask(
     open val displayName: String?,
     open val inputs: AbstractInput?,
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonIgnoreProperties(ignoreUnknown = true)
     open val condition: String?
 ) {
     abstract fun covertToElement(config: CiBuildConfig): Element
