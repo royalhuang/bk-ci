@@ -52,6 +52,7 @@ import com.tencent.devops.process.pojo.mq.PipelineBuildContainerEvent
 import com.tencent.devops.process.service.BuildVariableService
 import com.tencent.devops.process.utils.PIPELINE_RETRY_COUNT
 import org.apache.commons.lang3.math.NumberUtils
+import com.tencent.devops.process.service.PipelineTaskService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -69,8 +70,9 @@ class ContainerControl @Autowired constructor(
     private val pipelineRuntimeService: PipelineRuntimeService,
     private val pipelineBuildDetailService: PipelineBuildDetailService,
     private val buildVariableService: BuildVariableService,
-    private val mutexControl: MutexControl,
-    private val dependOnControl: DependOnControl
+    private val dependOnControl: DependOnControl,
+    private val pipelineTaskService: PipelineTaskService,
+    private val mutexControl: MutexControl
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -94,7 +96,7 @@ class ContainerControl @Autowired constructor(
         }
 
         // 当build的状态是结束的时候，直接返回
-        if (BuildStatus.isFinish(container.status)) {
+        if (BuildStatus.isFinish(container.status) || container.status.equals(BuildStatus.PAUSE)) {
             pipelineBuildDetailService.updateContainerStatus(buildId, containerId, container.status)
             logger.warn("[$buildId]||stage=$stageId|container=$containerId|status=${container.status}")
             return
@@ -110,6 +112,18 @@ class ContainerControl @Autowired constructor(
         )
         val containerTaskList = pipelineRuntimeService.listContainerBuildTasks(buildId, containerId)
 
+        // 有暂停状态的任务，且关机插件未执行，则放行。 已执行则中断引擎
+        val stopTask = containerTaskList.filter { it.taskName.startsWith(VMUtils.getCleanVmLable()); it.taskId.startsWith(VMUtils.getStopVmLabel()) }
+        containerTaskList.forEach findPauseTask@{
+            if (BuildStatus.isPause(it.status) && actionType == ActionType.REFRESH) {
+                if (BuildStatus.isFinish(stopTask[0].status)) {
+                    actionType = ActionType.PAUSE
+                }
+                return@findPauseTask
+            }
+        }
+
+        // 仅在初次进入Container时进行跳过判断
         if (BuildStatus.isReadyToRun(container.status) || BuildStatus.DEPENDENT_WAITING == container.status) {
             // 当有依赖job时，根据依赖job的运行状态执行
             when (dependOnControl.dependOnStatus(this, container)) {
@@ -176,6 +190,22 @@ class ContainerControl @Autowired constructor(
                 }
                 else -> logger.info("[$buildId]|MUTEX_RUNNING|stage=$stageId|container=$containerId|action=$actionType|projectId=$projectId") // 正常运行
             }
+        } else if (ActionType.isPause(actionType)) {
+            // 刷container 状态
+            pipelineRuntimeService.updateContainerStatus(
+                buildId = buildId,
+                stageId = stageId,
+                containerId = containerId,
+                buildStatus = BuildStatus.PAUSE
+            )
+            // 刷detail container 状态
+            pipelineBuildDetailService.pauseContainer(
+                buildId = buildId,
+                stageId = stageId,
+                containerId = containerId,
+                buildStatus = BuildStatus.PAUSE
+            )
+            return
         }
 
         // 待执行任务，job状态，是否启动构建机任务而失败
@@ -186,7 +216,9 @@ class ContainerControl @Autowired constructor(
                 // 要求强制终止
                 ActionType.isTerminate(actionType) -> checkTerminateAction(containerTaskList, reason, timeout)
                 // 要求停止执行的请求
-                ActionType.isEnd(actionType) -> checkEndAction(containerTaskList)
+                ActionType.isEnd(actionType) -> {
+                    checkEndAction(containerTaskList)
+                }
                 else -> { // 未规定的类型，打回上一级处理
                     logger.error("[$buildId]|CONTAINER_UNKNOWN_ACTION|stage=$stageId|container=$containerId|actionType=$actionType")
                     // 释放容器
@@ -450,13 +482,48 @@ class ContainerControl @Autowired constructor(
             if (waitToDoTask == null && BuildStatus.isRunning(task.status)) {
                 // 拿到按序号排列的第一个正在执行的插件
                 waitToDoTask = task
-            } else if (BuildStatus.isFailure(task.status)) {
+            } else if (BuildStatus.isFailure(task.status) || BuildStatus.isCancel(task.status)) {
                 containerFinalStatus = task.status
                 if (waitToDoTask != null) {
                     waitToDoTask = null
                 }
                 startVMFail = isStartVMTask(task)
                 return Triple(waitToDoTask, containerFinalStatus, startVMFail)
+            }
+        }
+        return Triple(waitToDoTask, containerFinalStatus, startVMFail)
+    }
+
+    private fun checkPauseAction(containerTaskList: Collection<PipelineBuildTask>): Triple<PipelineBuildTask?, BuildStatus, Boolean> {
+        var waitToDoTask: PipelineBuildTask? = null
+        var containerFinalStatus: BuildStatus = BuildStatus.PAUSE
+        var startVMFail = false
+        containerTaskList.forEach nextOne@{ task ->
+            // 若为暂停，则要确保拿到的任务为 关机或者空任务发送next stage任务
+            if (BuildStatus.isPause(task.status)) {
+                val pipelineBuildTasks = containerTaskList.filter {
+                    it.taskName.startsWith(VMUtils.getCleanVmLable()); it.taskId.startsWith(VMUtils.getStopVmLabel())
+                }
+                return if (pipelineBuildTasks == null) {
+                    Triple(waitToDoTask, containerFinalStatus, startVMFail)
+                } else {
+                    val pipelineBuildTask = pipelineBuildTasks[0]
+                    if (BuildStatus.isFinish(pipelineBuildTask.status)) {
+                        containerFinalStatus = BuildStatus.PAUSE
+                        Triple(waitToDoTask, containerFinalStatus, startVMFail)
+                    } else {
+                        waitToDoTask = pipelineBuildTask
+                        containerFinalStatus = BuildStatus.PAUSE
+                        logger.info("containerControl find next task| buildId[${task.buildId}], next task: stopVM")
+                        pipelineTaskService.pauseBuild(
+                            buildId = task.buildId,
+                            taskId = task.taskId,
+                            stageId = task.stageId,
+                            containerId = task.containerId
+                        )
+                        Triple(waitToDoTask, containerFinalStatus, startVMFail)
+                    }
+                }
             }
         }
         return Triple(waitToDoTask, containerFinalStatus, startVMFail)
@@ -476,72 +543,99 @@ class ContainerControl @Autowired constructor(
                 logger.info("[$buildId]|container=$containerId|task(${task.taskSeq})=${task.taskId}|${task.taskName}|is not enable, will skip")
 
                 buildLogPrinter.addYellowLine(
-                    buildId = task.buildId,
-                    message = "插件[${task.taskName}]被禁用",
-                    tag = task.taskId,
-                    jobId = task.containerHashId,
-                    executeCount = task.executeCount ?: 1
+                        buildId = task.buildId,
+                        message = "插件[${task.taskName}]被禁用",
+                        tag = task.taskId,
+                        jobId = task.containerHashId,
+                        executeCount = task.executeCount ?: 1
                 )
 
                 return@nextOne
             }
 
-            logger.info(
-                "[$buildId]|container=$containerId|task(${task.taskSeq})=${task.taskId}|${task.taskName}|${task.status}"
-            )
-
-            // 防止重复的发送启动同一个容器构建的消息：容器中的任务要求串行执行，所以再次启动会直接当作成功结束返回。
-            if (BuildStatus.isRunning(task.status)) {
-                containerFinalStatus = BuildStatus.RUNNING
-                logger.warn("[$buildId]|CONTAINER_CURRENT|container=$containerId|type=$actionType|running_task=$task")
-                return null
-            } else if (waitToDoTask == null && BuildStatus.isReadyToRun(task.status)) {
-                // 拿到按序号排列的第一个待执行的插件
-                waitToDoTask = task
-                val variables = buildVariableService.getAllVariable(buildId)
-                if (ControlUtils.checkAdditionalSkip(
-                        task.buildId,
-                        task.additionalOptions,
-                        containerFinalStatus,
-                        variables,
-                        hasFailedTaskInSuccessContainer
-                    )
-                ) {
-                    logger.warn(
-                        "[$buildId]|CONTAINER_SKIP|container=$containerId|type=$actionType|task=${task.taskName}"
-                    )
-                    pipelineRuntimeService.updateTaskStatus(
-                        buildId = buildId, taskId = task.taskId, userId = task.starter, buildStatus = BuildStatus.SKIP
-                    )
-                    pipelineBuildDetailService.taskEnd(
-                        buildId = buildId, taskId = task.taskId, buildStatus = BuildStatus.SKIP
-                    )
-                    waitToDoTask = null
-
-                    buildLogPrinter.addYellowLine(
-                        buildId = task.buildId,
-                        message = "插件[${task.taskName}]被跳过",
-                        tag = task.taskId,
-                        jobId = task.containerHashId,
-                        executeCount = task.executeCount ?: 1
-                    )
-                    return@nextOne
+            // 若为暂停，则要确保拿到的任务为 关机或者空任务发送next stage任务
+            if (BuildStatus.isPause(task.status)) {
+                val pipelineBuildTasks = containerTaskList.filter {
+                    it.taskName.startsWith(VMUtils.getCleanVmLable()); it.taskId.startsWith(VMUtils.getStopVmLabel())
+                }
+                return if (pipelineBuildTasks == null) {
+                    Triple(waitToDoTask, containerFinalStatus, startVMFail)
                 } else {
-                    containerFinalStatus = BuildStatus.RUNNING
-                    return Triple(waitToDoTask, containerFinalStatus, startVMFail)
+                    val pipelineBuildTask = pipelineBuildTasks[0]
+                    if (BuildStatus.isFinish(pipelineBuildTask.status)) {
+                        containerFinalStatus = BuildStatus.PAUSE
+                        Triple(waitToDoTask, containerFinalStatus, startVMFail)
+                    } else {
+                        waitToDoTask = pipelineBuildTask
+                        containerFinalStatus = BuildStatus.PAUSE
+                        logger.info("containerControl find next task| buildId[$buildId], next task: stopVM")
+                        pipelineTaskService.pauseBuild(
+                                buildId = buildId,
+                                taskId = task.taskId,
+                                stageId = stageId,
+                                containerId = containerId
+                        )
+                        Triple(waitToDoTask, containerFinalStatus, startVMFail)
+                    }
                 }
-            } else if (BuildStatus.isFailure(task.status) && !continueWhenFailure(task.additionalOptions)) {
-                // 如果在待执行插件之前前面还有失败的插件，则整个设置状态失败，因为即使重试也是失败了。
-                containerFinalStatus = task.status
-                if (waitToDoTask == null) {
-                    startVMFail = isStartVMTask(task)
-                    return Triple(waitToDoTask, containerFinalStatus, startVMFail)
-                }
-            } else if (BuildStatus.isFailure(task.status) && continueWhenFailure(task.additionalOptions)) {
-                hasFailedTaskInSuccessContainer = true
             }
-        }
-        return Triple(waitToDoTask, containerFinalStatus, startVMFail)
+
+                logger.info(
+                        "[$buildId]|container=$containerId|task(${task.taskSeq})=${task.taskId}|${task.taskName}|${task.status}"
+                )
+
+                // 防止重复的发送启动同一个容器构建的消息：容器中的任务要求串行执行，所以再次启动会直接当作成功结束返回。
+                if (BuildStatus.isRunning(task.status)) {
+                    containerFinalStatus = BuildStatus.RUNNING
+                    logger.warn("[$buildId]|CONTAINER_CURRENT|container=$containerId|type=$actionType|running_task=$task")
+                    return null
+                } else if (waitToDoTask == null && BuildStatus.isReadyToRun(task.status)) {
+                    // 拿到按序号排列的第一个待执行的插件
+                    waitToDoTask = task
+                    val variables = buildVariableService.getAllVariable(buildId)
+                    if (ControlUtils.checkAdditionalSkip(
+                                    task.buildId,
+                                    task.additionalOptions,
+                                    containerFinalStatus,
+                                    variables,
+                                    hasFailedTaskInSuccessContainer
+                            )
+                    ) {
+                        logger.warn(
+                                "[$buildId]|CONTAINER_SKIP|container=$containerId|type=$actionType|task=${task.taskName}"
+                        )
+                        pipelineRuntimeService.updateTaskStatus(
+                                buildId = buildId, taskId = task.taskId, userId = task.starter, buildStatus = BuildStatus.SKIP
+                        )
+                        pipelineBuildDetailService.taskEnd(
+                                buildId = buildId, taskId = task.taskId, buildStatus = BuildStatus.SKIP
+                        )
+                        waitToDoTask = null
+
+                        buildLogPrinter.addYellowLine(
+                                buildId = task.buildId,
+                                message = "插件[${task.taskName}]被跳过",
+                                tag = task.taskId,
+                                jobId = task.containerHashId,
+                                executeCount = task.executeCount ?: 1
+                        )
+                        return@nextOne
+                    } else {
+                        containerFinalStatus = BuildStatus.RUNNING
+                        return Triple(waitToDoTask, containerFinalStatus, startVMFail)
+                    }
+                } else if (BuildStatus.isFailure(task.status) && !continueWhenFailure(task.additionalOptions)) {
+                    // 如果在待执行插件之前前面还有失败的插件，则整个设置状态失败，因为即使重试也是失败了。
+                    containerFinalStatus = task.status
+                    if (waitToDoTask == null) {
+                        startVMFail = isStartVMTask(task)
+                        return Triple(waitToDoTask, containerFinalStatus, startVMFail)
+                    }
+                } else if (BuildStatus.isFailure(task.status) && continueWhenFailure(task.additionalOptions)) {
+                    hasFailedTaskInSuccessContainer = true
+                }
+            }
+            return Triple(waitToDoTask, containerFinalStatus, startVMFail)
     }
 
     private fun isStartVMTask(task: PipelineBuildTask) = VMUtils.genStartVMTaskId(task.containerId) == task.taskId
@@ -628,6 +722,23 @@ class ContainerControl @Autowired constructor(
                 buildId = buildId,
                 stageId = stageId,
                 actionType = ActionType.REFRESH
+            )
+        )
+    }
+
+    // 暂停自己,container状态为pause， 跳过中间所有任务，之间下发关机请求
+    private fun PipelineBuildContainerEvent.sendPauseContainer() {
+        pipelineEventDispatcher.dispatch(
+            PipelineBuildContainerEvent(
+                source = "pausePipeline",
+                projectId = projectId,
+                pipelineId = pipelineId,
+                userId = userId,
+                buildId = buildId,
+                stageId = stageId,
+                actionType = ActionType.PAUSE,
+                containerId = containerId,
+                containerType = containerType
             )
         )
     }

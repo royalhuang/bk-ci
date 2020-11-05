@@ -27,6 +27,7 @@
 package com.tencent.devops.process.engine.service
 
 import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.tencent.devops.common.api.exception.ErrorCodeException
 import com.tencent.devops.common.api.model.SQLPage
 import com.tencent.devops.common.api.pojo.BuildHistoryPage
@@ -48,6 +49,7 @@ import com.tencent.devops.common.pipeline.enums.ManualReviewAction
 import com.tencent.devops.common.pipeline.enums.StartType
 import com.tencent.devops.common.pipeline.pojo.BuildFormProperty
 import com.tencent.devops.common.pipeline.pojo.BuildParameters
+import com.tencent.devops.common.pipeline.pojo.element.Element
 import com.tencent.devops.common.pipeline.pojo.element.agent.ManualReviewUserTaskElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.ManualTriggerElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.RemoteTriggerElement
@@ -57,14 +59,17 @@ import com.tencent.devops.common.redis.RedisLock
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.common.service.utils.HomeHostUtil
 import com.tencent.devops.common.service.utils.MessageCodeUtil
+import com.tencent.devops.common.websocket.dispatch.WebSocketDispatcher
 import com.tencent.devops.process.constant.ProcessMessageCode
 import com.tencent.devops.process.engine.compatibility.BuildParametersCompatibilityTransformer
 import com.tencent.devops.process.engine.compatibility.BuildPropertyCompatibilityTools
 import com.tencent.devops.process.engine.control.lock.BuildIdLock
 import com.tencent.devops.process.engine.control.lock.PipelineBuildRunLock
+import com.tencent.devops.process.engine.dao.PipelineBuildTaskDao
 import com.tencent.devops.process.engine.interceptor.InterceptData
 import com.tencent.devops.process.engine.interceptor.PipelineInterceptorChain
 import com.tencent.devops.process.engine.pojo.PipelineInfo
+import com.tencent.devops.process.engine.pojo.event.PipelineTaskPauseEvent
 import com.tencent.devops.process.jmx.api.ProcessJmxApi
 import com.tencent.devops.process.permission.PipelinePermissionService
 import com.tencent.devops.process.pojo.BuildBasicInfo
@@ -82,6 +87,7 @@ import com.tencent.devops.process.service.BuildStartupParamService
 import com.tencent.devops.process.service.BuildVariableService
 import com.tencent.devops.process.service.ParamService
 import com.tencent.devops.process.utils.BUILD_NO
+import com.tencent.devops.process.service.PipelineTaskService
 import com.tencent.devops.process.utils.PIPELINE_NAME
 import com.tencent.devops.process.utils.PIPELINE_RETRY_BUILD_ID
 import com.tencent.devops.process.utils.PIPELINE_RETRY_COUNT
@@ -98,6 +104,7 @@ import com.tencent.devops.process.utils.PIPELINE_START_USER_ID
 import com.tencent.devops.process.utils.PIPELINE_START_USER_NAME
 import com.tencent.devops.process.utils.PIPELINE_START_WEBHOOK_USER_ID
 import com.tencent.devops.process.utils.PIPELINE_VERSION
+import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.stereotype.Service
@@ -124,7 +131,6 @@ class PipelineBuildService(
     private val buildStartupParamService: BuildStartupParamService,
     private val paramService: ParamService,
     private val pipelineBuildQualityService: PipelineBuildQualityService,
-    private val rabbitTemplate: RabbitTemplate,
     private val buildLogPrinter: BuildLogPrinter,
     private val buildParamCompatibilityTransformer: BuildParametersCompatibilityTransformer
 ) {
@@ -165,7 +171,8 @@ class PipelineBuildService(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_PIPELINE_NOT_EXISTS,
                 defaultMessage = "流水线不存在",
-                params = arrayOf(pipelineId))
+                params = arrayOf(pipelineId)
+            )
 
         val model = getModel(projectId, pipelineId)
 
@@ -298,9 +305,10 @@ class PipelineBuildService(
                     statusCode = Response.Status.NOT_FOUND.statusCode,
                     errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
                     defaultMessage = "构建任务${buildId}不存在",
-                    params = arrayOf(buildId))
+                    params = arrayOf(buildId)
+                )
 
-            if (!BuildStatus.isFinish(buildInfo.status)) {
+            if (!BuildStatus.isFinish(buildInfo.status) || BuildStatus.isPause(buildInfo.status)) {
                 throw ErrorCodeException(
                     errorCode = ProcessMessageCode.ERROR_DUPLICATE_BUILD_RETRY_ACT,
                     defaultMessage = "重试已经启动，忽略重复的请求"
@@ -329,9 +337,14 @@ class PipelineBuildService(
                 }
             }
             if (!canManualStartup) {
-                throw ErrorCodeException(defaultMessage = "该流水线不能手动启动",
-                    errorCode = ProcessMessageCode.DENY_START_BY_MANUAL)
+                throw ErrorCodeException(
+                    defaultMessage = "该流水线不能手动启动",
+                    errorCode = ProcessMessageCode.DENY_START_BY_MANUAL
+                )
             }
+
+            // 清理插件暂停信息
+
             val params = mutableMapOf<String, Any>()
             val originVars = buildVariableService.getAllVariable(buildId)
             if (!taskId.isNullOrBlank()) {
@@ -367,6 +380,9 @@ class PipelineBuildService(
                     if (startupParam != null && startupParam.isNotEmpty()) {
                         params.putAll(JsonUtil.toMap(startupParam).filter { it.key != PIPELINE_RETRY_START_TASK_ID })
                     }
+
+                    // 刷新因暂停而变化的element
+                    buildDetailService.updateElementWhenPauseRetry(buildId, model)
                 } catch (e: Exception) {
                     logger.warn("Fail to get the startup param for the build($buildId)", e)
                 }
@@ -391,7 +407,8 @@ class PipelineBuildService(
                         statusCode = Response.Status.NOT_FOUND.statusCode,
                         errorCode = ProcessMessageCode.ERROR_PIPELINE_NOT_EXISTS,
                         defaultMessage = "流水线不存在",
-                        params = arrayOf(buildId))
+                        params = arrayOf(buildId)
+                    )
 
             val startParamsWithType = mutableListOf<BuildParameters>()
             params.forEach { (t, u) -> startParamsWithType.add(BuildParameters(key = t, value = u)) }
@@ -441,7 +458,8 @@ class PipelineBuildService(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_PIPELINE_NOT_EXISTS,
                 defaultMessage = "流水线不存在",
-                params = arrayOf(pipelineId))
+                params = arrayOf(pipelineId)
+            )
 
         val startEpoch = System.currentTimeMillis()
         try {
@@ -465,8 +483,10 @@ class PipelineBuildService(
                 }
 
                 if (!canManualStartup) {
-                    throw ErrorCodeException(defaultMessage = "该流水线不能手动启动",
-                        errorCode = ProcessMessageCode.DENY_START_BY_MANUAL)
+                    throw ErrorCodeException(
+                        defaultMessage = "该流水线不能手动启动",
+                        errorCode = ProcessMessageCode.DENY_START_BY_MANUAL
+                    )
                 }
             } else if (startType == StartType.REMOTE) {
                 var canRemoteStartup = false
@@ -480,12 +500,20 @@ class PipelineBuildService(
                 }
 
                 if (!canRemoteStartup) {
-                    throw ErrorCodeException(defaultMessage = "该流水线不能远程触发",
-                        errorCode = ProcessMessageCode.DENY_START_BY_REMOTE)
+                    throw ErrorCodeException(
+                        defaultMessage = "该流水线不能远程触发",
+                        errorCode = ProcessMessageCode.DENY_START_BY_REMOTE
+                    )
                 }
             }
 
-            val startParamsWithType = buildParamCompatibilityTransformer.parseManualStartParam(triggerContainer.params, values)
+            if (buildNo != null) {
+                pipelineRuntimeService.updateBuildNo(pipelineId, buildNo)
+                logger.info("[$pipelineId] buildNo was changed to [$buildNo]")
+            }
+
+            val startParamsWithType =
+                buildParamCompatibilityTransformer.parseManualStartParam(triggerContainer.params, values)
 
             model.stages.forEachIndexed { index, stage ->
                 if (index == 0) {
@@ -718,7 +746,8 @@ class PipelineBuildService(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
                 defaultMessage = "构建任务${buildId}不存在",
-                params = arrayOf(buildId))
+                params = arrayOf(buildId)
+            )
 
         if (buildInfo.pipelineId != pipelineId) {
             logger.warn("buildManualReview error: input|$pipelineId| buildId-pipeline| ${buildInfo.pipelineId}| $buildId")
@@ -730,7 +759,8 @@ class PipelineBuildService(
         val model = pipelineRepositoryService.getModel(pipelineId) ?: throw ErrorCodeException(
             statusCode = Response.Status.NOT_FOUND.statusCode,
             errorCode = ProcessMessageCode.ERROR_PIPELINE_MODEL_NOT_EXISTS,
-            defaultMessage = "流水线编排不存在")
+            defaultMessage = "流水线编排不存在"
+        )
 
         val runtimeVars = buildVariableService.getAllVariable(buildId)
         model.stages.forEachIndexed { index, s ->
@@ -743,7 +773,8 @@ class PipelineBuildService(
                         // Replace the review user with environment
                         val reviewUser = mutableListOf<String>()
                         el.reviewUsers.forEach { user ->
-                            reviewUser.addAll(EnvUtils.parseEnv(user, runtimeVars).split(",").map { it.trim() }.toList())
+                            reviewUser.addAll(EnvUtils.parseEnv(user, runtimeVars).split(",").map { it.trim() }
+                                .toList())
                         }
                         params.params.forEach {
                             it.value = EnvUtils.parseEnv(it.value.toString(), runtimeVars)
@@ -802,18 +833,21 @@ class PipelineBuildService(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_NO_STAGE_EXISTS_BY_ID,
                 defaultMessage = "构建Stage${stageId}不存在",
-                params = arrayOf(stageId))
+                params = arrayOf(stageId)
+            )
         if (buildStage.controlOption?.stageControlOption?.triggerUsers?.contains(userId) != true)
             throw ErrorCodeException(
                 statusCode = Response.Status.FORBIDDEN.statusCode,
                 errorCode = ProcessMessageCode.USER_NEED_PIPELINE_X_PERMISSION.toString(),
                 defaultMessage = "用户($userId)不在Stage($stageId)可执行名单",
-                params = arrayOf(buildId))
+                params = arrayOf(buildId)
+            )
         if (buildStage.status.name != BuildStatus.PAUSE.name) throw ErrorCodeException(
             statusCode = Response.Status.NOT_FOUND.statusCode,
             errorCode = ProcessMessageCode.ERROR_STAGE_IS_NOT_PAUSED,
             defaultMessage = "Stage($stageId)未处于暂停状态",
-            params = arrayOf(buildId))
+            params = arrayOf(buildId)
+        )
 
         val runLock = PipelineBuildRunLock(redisOperation, pipelineId)
         try {
@@ -850,19 +884,27 @@ class PipelineBuildService(
         }
     }
 
-    fun goToReview(userId: String, projectId: String, pipelineId: String, buildId: String, elementId: String): ReviewParam {
+    fun goToReview(
+        userId: String,
+        projectId: String,
+        pipelineId: String,
+        buildId: String,
+        elementId: String
+    ): ReviewParam {
 
         pipelineRuntimeService.getBuildInfo(buildId)
             ?: throw ErrorCodeException(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
                 defaultMessage = "构建任务${buildId}不存在",
-                params = arrayOf(buildId))
+                params = arrayOf(buildId)
+            )
 
         val model = pipelineRepositoryService.getModel(pipelineId) ?: throw ErrorCodeException(
             statusCode = Response.Status.NOT_FOUND.statusCode,
             errorCode = ProcessMessageCode.ERROR_PIPELINE_MODEL_NOT_EXISTS,
-            defaultMessage = "流水线编排不存在")
+            defaultMessage = "流水线编排不存在"
+        )
 
         val runtimeVars = buildVariableService.getAllVariable(buildId)
         model.stages.forEachIndexed { index, s ->
@@ -874,7 +916,8 @@ class PipelineBuildService(
                     if (el is ManualReviewUserTaskElement && el.id == elementId) {
                         val reviewUser = mutableListOf<String>()
                         el.reviewUsers.forEach { user ->
-                            reviewUser.addAll(EnvUtils.parseEnv(user, runtimeVars).split(",").map { it.trim() }.toList())
+                            reviewUser.addAll(EnvUtils.parseEnv(user, runtimeVars).split(",").map { it.trim() }
+                                .toList())
                         }
                         el.params.forEach { param ->
                             param.value = EnvUtils.parseEnv(param.value ?: "", runtimeVars)
@@ -1013,7 +1056,8 @@ class PipelineBuildService(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
                 defaultMessage = "构建号($buildNo)不存在",
-                params = arrayOf("buildNo=$buildNo"))
+                params = arrayOf("buildNo=$buildNo")
+            )
         return getBuildDetail(projectId, pipelineId, buildId, channelCode, checkPermission)
     }
 
@@ -1069,7 +1113,8 @@ class PipelineBuildService(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
                 defaultMessage = "构建任务${buildId}不存在",
-                params = arrayOf(buildId))
+                params = arrayOf(buildId)
+            )
         }
         val buildHistory = buildHistories[0]
         val variables = buildVariableService.getAllVariable(buildId)
@@ -1119,7 +1164,10 @@ class PipelineBuildService(
         val buildHistories = pipelineRuntimeService.getBuildHistoryByIds(setOf(buildId))
 
         if (buildHistories.isEmpty()) {
-            return MessageCodeUtil.generateResponseDataObject(ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID, arrayOf(buildId))
+            return MessageCodeUtil.generateResponseDataObject(
+                ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
+                arrayOf(buildId)
+            )
         }
 
         val pipelineInfo = pipelineRepositoryService.getPipelineInfo(projectId, pipelineId)
@@ -1181,7 +1229,8 @@ class PipelineBuildService(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_PIPELINE_NOT_EXISTS,
                 defaultMessage = "流水线不存在",
-                params = arrayOf(pipelineId))
+                params = arrayOf(pipelineId)
+            )
 
         val apiStartEpoch = System.currentTimeMillis()
         try {
@@ -1261,7 +1310,8 @@ class PipelineBuildService(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_PIPELINE_NOT_EXISTS,
                 defaultMessage = "流水线不存在",
-                params = arrayOf(pipelineId))
+                params = arrayOf(pipelineId)
+            )
 
         val apiStartEpoch = System.currentTimeMillis()
         try {
@@ -1417,7 +1467,8 @@ class PipelineBuildService(
                 statusCode = Response.Status.NOT_FOUND.statusCode,
                 errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
                 defaultMessage = "构建任务${buildId}不存在",
-                params = arrayOf(buildId))
+                params = arrayOf(buildId)
+            )
         return BuildBasicInfo(
             buildId = buildId,
             projectId = build.projectId,
@@ -1479,7 +1530,8 @@ class PipelineBuildService(
         pipelineRepositoryService.getModel(pipelineId, version) ?: throw ErrorCodeException(
             statusCode = Response.Status.NOT_FOUND.statusCode,
             errorCode = ProcessMessageCode.ERROR_PIPELINE_MODEL_NOT_EXISTS,
-            defaultMessage = "流水线编排不存在")
+            defaultMessage = "流水线编排不存在"
+        )
 
     private fun buildManualShutdown(
         projectId: String,
@@ -1600,8 +1652,10 @@ class PipelineBuildService(
         val runLock = PipelineBuildRunLock(redisOperation = redisOperation, pipelineId = pipelineId)
         try {
             if (frequencyLimit && channelCode !in NO_LIMIT_CHANNEL && !runLock.tryLock()) {
-                throw ErrorCodeException(errorCode = ProcessMessageCode.ERROR_START_BUILD_FREQUENT_LIMIT,
-                    defaultMessage = "不能太频繁启动构建")
+                throw ErrorCodeException(
+                    errorCode = ProcessMessageCode.ERROR_START_BUILD_FREQUENT_LIMIT,
+                    defaultMessage = "不能太频繁启动构建"
+                )
             }
 
             // 如果指定了版本号，则设置指定的版本号
@@ -1746,6 +1800,67 @@ class PipelineBuildService(
             vmSeqId = vmSeqId,
             vmInfo = vmInfo
         )
+    }
+
+    fun executePauseAtom(
+        userId: String,
+        pipelineId: String,
+        buildId: String,
+        projectId: String,
+        taskId: String,
+        stageId: String,
+        containerId: String,
+        isContinue: Boolean,
+        element: Element,
+        checkPermission: Boolean? = true
+    ): Boolean {
+        logger.info("executePauseAtom| $userId| $pipelineId|$buildId| $stageId| $containerId| $taskId| $isContinue| $element")
+        if (checkPermission!!) {
+            pipelinePermissionService.validPipelinePermission(
+                userId = userId,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                permission = AuthPermission.EXECUTE,
+                message = "用户（$userId) 无权限执行暂停流水线($pipelineId)"
+            )
+        }
+        val buildInfo = pipelineRuntimeService.getBuildInfo(buildId)
+            ?: throw ErrorCodeException(
+                statusCode = Response.Status.NOT_FOUND.statusCode,
+                errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
+                defaultMessage = "构建任务${buildId}不存在",
+                params = arrayOf(buildId)
+            )
+
+        val taskRecord = pipelineRuntimeService.getBuildTask(buildId, taskId)
+
+        if (taskRecord?.status != BuildStatus.PAUSE) {
+            throw ErrorCodeException(
+                errorCode = ProcessMessageCode.ERROR_PARUS_PIEPLINE_IS_RUNNINT,
+                defaultMessage = "暂停流水线已恢复执行"
+            )
+        }
+
+        var actionType = ActionType.REFRESH
+        if (!isContinue) {
+            actionType = ActionType.TERMINATE
+        }
+
+        pipelineEventDispatcher.dispatch(
+            PipelineTaskPauseEvent(
+                source = "PauseTaskExecute",
+                pipelineId = pipelineId,
+                buildId = buildId,
+                projectId = projectId,
+                stageId = stageId,
+                containerId = containerId,
+                element = element,
+                taskId = taskId,
+                actionType = actionType,
+                userId = userId
+            )
+        )
+        return true
     }
 
     fun getBuildDetailStatus(

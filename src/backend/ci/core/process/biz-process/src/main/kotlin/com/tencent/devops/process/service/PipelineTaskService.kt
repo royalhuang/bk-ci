@@ -31,21 +31,34 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.pipeline.Model
+import com.tencent.devops.common.client.Client
+import com.tencent.devops.common.notify.enums.NotifyType
+import com.tencent.devops.common.pipeline.enums.BuildStatus
 import com.tencent.devops.common.pipeline.pojo.element.ElementAdditionalOptions
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.common.log.utils.BuildLogPrinter
+import com.tencent.devops.common.websocket.pojo.BuildPageInfo
+import com.tencent.devops.notify.api.service.ServiceNotifyMessageTemplateResource
+import com.tencent.devops.notify.pojo.SendNotifyMessageTemplateRequest
 import com.tencent.devops.process.dao.PipelineTaskDao
 import com.tencent.devops.process.engine.control.ControlUtils
+import com.tencent.devops.process.engine.dao.PipelineBuildSummaryDao
+import com.tencent.devops.process.engine.dao.PipelineInfoDao
 import com.tencent.devops.process.engine.dao.PipelineModelTaskDao
 import com.tencent.devops.process.engine.pojo.PipelineBuildTask
 import com.tencent.devops.process.engine.pojo.PipelineModelTask
 import com.tencent.devops.process.engine.service.PipelineBuildDetailService
 import com.tencent.devops.process.engine.service.PipelineRuntimeService
+import com.tencent.devops.process.engine.utils.PauseRedisUtils
 import com.tencent.devops.process.pojo.PipelineProjectRel
+import com.tencent.devops.process.websocket.page.DetailPageBuild
 import com.tencent.devops.process.utils.BK_CI_BUILD_FAIL_TASKNAMES
 import com.tencent.devops.process.utils.BK_CI_BUILD_FAIL_TASKS
+import com.tencent.devops.project.api.service.ServiceProjectResource
+import com.tencent.devops.store.pojo.common.PIPELINE_TASK_PAUSE_NOTIFY
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
+import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.util.concurrent.TimeUnit
@@ -56,10 +69,12 @@ class PipelineTaskService @Autowired constructor(
     val redisOperation: RedisOperation,
     val objectMapper: ObjectMapper,
     val pipelineTaskDao: PipelineTaskDao,
+    val pipelineBuildDetailService: PipelineBuildDetailService,
     val pipelineModelTaskDao: PipelineModelTaskDao,
     private val buildLogPrinter: BuildLogPrinter,
     private val pipelineVariableService: BuildVariableService,
-    private val pipelineBuildDetailService: PipelineBuildDetailService,
+    val pipelineInfoDao: PipelineInfoDao,
+    val client: Client,
     private val pipelineRuntimeService: PipelineRuntimeService
 ) {
 
@@ -176,6 +191,48 @@ class PipelineTaskService @Autowired constructor(
         return isRry
     }
 
+    fun isPause(taskId: String, buildId: String): Boolean {
+        val taskRecord = pipelineRuntimeService.getBuildTask(buildId, taskId)
+        val pauseFlag = redisOperation.get(PauseRedisUtils.getPauseRedisKey(buildId, taskId))
+        val isPause = ControlUtils.pauseBeforeExec(taskRecord!!.additionalOptions, pauseFlag)
+        if (isPause) {
+            logger.info("pause atom, buildId[$buildId], taskId[$taskId] , additionalOptions[${taskRecord!!.additionalOptions}]")
+            buildLogPrinter.addYellowLine(
+                buildId = buildId,
+                message = "【${taskRecord.taskName}】暂停中，等待人工处理...",
+                tag = taskRecord.taskId,
+                jobId = taskRecord.containerId,
+                executeCount = 1
+            )
+            pauseBuild(
+                buildId = buildId,
+                stageId = taskRecord.stageId,
+                taskId = taskRecord.taskId,
+                containerId = taskRecord.containerId
+            )
+
+            try {
+                // 发送消息给相关关注人
+                val sendUser = taskRecord.additionalOptions!!.subscriptionPauseUser
+                val subscriptionPauseUser = mutableSetOf<String>()
+                if (sendUser != null) {
+                    val sendUsers = sendUser.split(",")
+                    subscriptionPauseUser.add(sendUsers.forEach { it }.toString())
+                }
+                sendPauseNotify(
+                        buildId = buildId,
+                        taskName = taskRecord.taskName,
+                        pipelineId = taskRecord.pipelineId,
+                        receivers = subscriptionPauseUser
+                )
+                logger.info("|$buildId| next task |$taskId| need pause, send End status to Vm agent")
+            } catch (e: Exception) {
+                logger.warn("pause atom send notify fail", e)
+            }
+        }
+        return isPause
+    }
+
     fun removeRetryCache(buildId: String, taskId: String) {
         // 清除该原子内的重试记录
         redisOperation.delete(getRedisKey(buildId, taskId))
@@ -290,6 +347,90 @@ class PipelineTaskService @Autowired constructor(
 
     private fun getRedisKey(buildId: String, taskId: String): String {
         return "$retryCountRedisKey$buildId:$taskId"
+    }
+
+    fun pauseBuild(buildId: String, taskId: String, stageId: String, containerId: String) {
+        logger.info("pauseBuild buildId[$buildId] stageId[$stageId] containerId[$containerId] taskId[$taskId]")
+        // 修改任务状态位暂停
+        pipelineRuntimeService.updateTaskStatus(
+            buildId = buildId,
+            taskId = taskId,
+            userId = "",
+            buildStatus = BuildStatus.PAUSE
+        )
+
+        logger.info("pauseBuild $buildId update task status success")
+
+        pipelineBuildDetailService.pauseTask(
+            buildId = buildId,
+            stageId = stageId,
+            containerId = containerId,
+            taskId = taskId,
+            buildStatus = BuildStatus.PAUSE
+        )
+        logger.info("pauseBuild $buildId update detail status success")
+
+        redisOperation.set(PauseRedisUtils.getPauseRedisKey(buildId, taskId), "true")
+        logger.info("pauseTask set redis flag success")
+    }
+
+    private fun sendPauseNotify(
+        buildId: String,
+        taskName: String,
+        pipelineId: String,
+        receivers: Set<String>?
+    ) {
+        val pipelineRecord = pipelineInfoDao.getPipelineInfo(dslContext, pipelineId)
+        if (pipelineRecord == null) {
+            logger.warn("sendPauseNotify pipeline[$pipelineId] is empty record")
+            return
+        }
+
+        val buildRecord = pipelineRuntimeService.getBuildInfo(buildId)
+        val pipelineName = (pipelineRecord?.pipelineName ?: "")
+        val buildNum = buildRecord?.buildNum.toString()
+        val projectName = client.get(ServiceProjectResource::class).get(pipelineRecord!!.projectId).data!!.projectName
+        val url = DetailPageBuild().buildPage(
+            buildPageInfo = BuildPageInfo(
+                buildId = buildId,
+                pipelineId = pipelineId,
+                projectId = pipelineRecord.projectId,
+                atomId = null
+            )
+        )
+        // 指定通过rtx发送
+        val notifyType = mutableSetOf<String>()
+        notifyType.add(NotifyType.RTX.name)
+
+        // 若没有配置订阅人，则将暂停消息发送给发起人
+        val receiver = mutableSetOf<String>()
+        if (receivers == null || receivers.isEmpty()) {
+            receiver.add(buildRecord!!.startUser)
+            receiver.add(pipelineRecord.lastModifyUser)
+        } else {
+            receiver.addAll(receivers)
+        }
+
+        val msg = SendNotifyMessageTemplateRequest(
+            templateCode = PIPELINE_TASK_PAUSE_NOTIFY,
+            titleParams = mapOf(
+                "BK_CI_PIPELINE_NAME" to pipelineName,
+                "BK_CI_BUILD_NUM" to buildNum
+            ),
+            notifyType = notifyType,
+            bodyParams = mapOf(
+                "BK_CI_PROJECT_NAME_CN" to projectName,
+                "BK_CI_PIPELINE_NAME" to pipelineName,
+                "BK_CI_BUILD_NUM" to buildNum,
+                "taskName" to taskName,
+                "BK_CI_START_USER_ID" to (buildRecord?.startUser ?: ""),
+                "url" to url
+            ),
+            receivers = receiver
+        )
+        logger.info("sendPauseNotify|$buildId| $pipelineId| $msg")
+        client.get(ServiceNotifyMessageTemplateResource::class)
+            .sendNotifyMessageByTemplate(msg)
     }
 
     companion object {
