@@ -285,8 +285,13 @@ class PipelineService @Autowired constructor(
                 throw ignored
             } finally {
                 if (!success) {
-                    val bParam = BeforeDeleteParam(userId = userId, projectId = projectId, pipelineId = pipelineId ?: "", channelCode = channelCode)
-                    modelCheckPlugin.beforeDeleteElementInExistsModel(existModel = model, sourceModel = null, param = bParam)
+                    val param = BeforeDeleteParam(
+                        userId = userId,
+                        projectId = projectId,
+                        pipelineId = pipelineId ?: "",
+                        channelCode = channelCode
+                    )
+                    modelCheckPlugin.beforeDeleteElementInExistsModel(existModel = model, sourceModel = null, param = param)
                 }
             }
         } finally {
@@ -507,7 +512,7 @@ class PipelineService @Autowired constructor(
         checkPermission: Boolean = true,
         checkTemplate: Boolean = true
     ) {
-        if (checkTemplate && !isTemplatePipeline(pipelineId)) {
+        if (checkTemplate && isTemplatePipeline(pipelineId)) {
             throw ErrorCodeException(
                 errorCode = ProcessMessageCode.ERROR_PIPELINE_TEMPLATE_CAN_NOT_EDIT,
                 defaultMessage = "模板流水线不支持编辑"
