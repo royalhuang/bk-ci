@@ -527,7 +527,7 @@ class PipelineBuildService(
                 stage.containers.forEach { container ->
                     val atomItems = mutableListOf<AtomPostReqItem>()
                     val atomIndexMap = mutableMapOf<String, Int>()
-                    val elements = container.elements
+                    val elements = container.elements.toMutableList()
                     for (i in elements.indices) {
                         val e = elements[i]
                         // 优化循环
@@ -600,6 +600,7 @@ class PipelineBuildService(
                             }
                         }
                     }
+                    container.elements = elements
                 }
             }
 
