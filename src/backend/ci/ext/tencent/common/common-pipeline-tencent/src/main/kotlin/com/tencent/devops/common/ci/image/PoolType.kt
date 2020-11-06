@@ -66,20 +66,24 @@ enum class PoolType {
     Macos {
         override fun transfer(pool: Pool): DispatchType {
             return MacOSDispatchType(
-                macOSEvn = pool.systemVersion + ":" + pool.xcodeVersion,
-                systemVersion = pool.systemVersion,
-                xcodeVersion = pool.xcodeVersion
+                macOSEvn = pool.macOS!!.systemVersion + ":" + pool.macOS.xcodeVersion,
+                systemVersion = pool.macOS.systemVersion,
+                xcodeVersion = pool.macOS.xcodeVersion
             )
         }
 
         override fun validatePool(pool: Pool) {
-            if (null == pool.systemVersion) {
-                logger.error("validatePool , pool.type:{} , systemVersion is null", this)
-                throw OperationException("当 pool.type = ${this}, systemVersion参数不能为空")
+            if (null == pool.macOS) {
+                logger.error("validatePool , pool.type:{} , macOS is null", this)
+                throw OperationException("当 pool.type = ${this}, macOS参数不能为空")
             }
-            if (null == pool.xcodeVersion) {
-                logger.error("validatePool , pool.type:{} , xcodeVersion is null", this)
-                throw OperationException("当 pool.type = ${this}, xcodeVersion参数不能为空")
+            if (null == pool.macOS.systemVersion) {
+                logger.error("validatePool , pool.type:{} , macOS.systemVersion is null", this)
+                throw OperationException("当 pool.type = ${this}, macOS.systemVersion参数不能为空")
+            }
+            if (null == pool.macOS.xcodeVersion) {
+                logger.error("validatePool , pool.type:{} , macOS.xcodeVersion is null", this)
+                throw OperationException("当 pool.type = ${this}, macOS.xcodeVersion参数不能为空")
             }
         }
     },

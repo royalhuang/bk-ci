@@ -39,8 +39,6 @@ data class Pool(
     val performanceConfigId: String? = "0",
     val env: Map<String, String>? = mapOf(),
     val type: PoolType? = null,
-    val systemVersion: String? = null,
-    val xcodeVersion: String? = null,
     val agentName: String? = null,
     val workspace: String? = null
 
