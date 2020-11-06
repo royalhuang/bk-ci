@@ -253,6 +253,7 @@ open class MarketAtomTask : ITask() {
             // 获取插件post操作入口参数
             var postEntryParam: String? = null
             if (additionalOptions != null) {
+                logger.info("additionalOptions is:$additionalOptions")
                 val additionalOptionMap = JsonUtil.toMutableMapSkipEmpty(additionalOptions)
                 postEntryParam = additionalOptionMap["postEntryParam"]?.toString()
             }
