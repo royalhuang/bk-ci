@@ -26,6 +26,7 @@
 
 package com.tencent.devops.gitci.service
 
+import com.nhaarman.mockito_kotlin.inOrder
 import com.tencent.devops.common.api.exception.CustomException
 import com.tencent.devops.common.api.util.timestamp
 import com.tencent.devops.gitci.dao.GitProjectConfDao

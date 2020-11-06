@@ -193,7 +193,7 @@ class GitProjectConfDao {
                 )
             }
             return dslContext.selectFrom(this).where(conditions)
-                    .orderBy(CREATE_TIME.desc())
+                    .orderBy(CREATE_TIME.asc())
                     .limit(pageSize).offset((page - 1) * pageSize)
                     .fetch()
         }
