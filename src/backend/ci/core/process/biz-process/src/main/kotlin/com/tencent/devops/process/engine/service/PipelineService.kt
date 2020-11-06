@@ -507,7 +507,7 @@ class PipelineService @Autowired constructor(
         checkPermission: Boolean = true,
         checkTemplate: Boolean = true
     ) {
-        if (checkTemplate && isTemplatePipeline(pipelineId)) {
+        if (checkTemplate && !isTemplatePipeline(pipelineId)) {
             throw ErrorCodeException(
                 errorCode = ProcessMessageCode.ERROR_PIPELINE_TEMPLATE_CAN_NOT_EDIT,
                 defaultMessage = "模板流水线不支持编辑"
