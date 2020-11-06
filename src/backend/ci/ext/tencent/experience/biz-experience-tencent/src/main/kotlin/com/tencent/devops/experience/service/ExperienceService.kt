@@ -332,7 +332,7 @@ class ExperienceService @Autowired constructor(
             experienceName = experience.experienceName ?: projectId,
             versionTitle = experience.versionTitle ?: experience.name,
             category = experience.categoryId ?: ProductCategoryEnum.LIFE.id,
-            productOwner = experience.productOwner ?: "",
+            productOwner = objectMapper.writeValueAsString(experience.productOwner ?: emptyList<String>()),
             iconUrl = iconUrl
         )
 
@@ -471,8 +471,10 @@ class ExperienceService @Autowired constructor(
                 params = arrayOf(userId)
             )
         }
-        val url = "${HomeHostUtil.outerServerHost()}/app/download/devops_app_forward.html?flag=experienceDetail&experienceId=$experienceHashId"
-        return client.get(ServiceShortUrlResource::class).createShortUrl(CreateShortUrlRequest(url, 24 * 3600 * 3)).data!!
+        val url =
+            "${HomeHostUtil.outerServerHost()}/app/download/devops_app_forward.html?flag=experienceDetail&experienceId=$experienceHashId"
+        return client.get(ServiceShortUrlResource::class)
+            .createShortUrl(CreateShortUrlRequest(url, 24 * 3600 * 3)).data!!
     }
 
     fun downloadUrl(userId: String, projectId: String, experienceHashId: String): String {
@@ -688,8 +690,10 @@ class ExperienceService @Autowired constructor(
 
     private fun getShortExternalUrl(experienceId: Long): String {
         val experienceHashId = HashUtil.encodeLongId(experienceId)
-        val url = "${HomeHostUtil.outerServerHost()}/app/download/devops_app_forward.html?flag=experienceDetail&experienceId=$experienceHashId"
-        return client.get(ServiceShortUrlResource::class).createShortUrl(CreateShortUrlRequest(url, 24 * 3600 * 30)).data!!
+        val url =
+            "${HomeHostUtil.outerServerHost()}/app/download/devops_app_forward.html?flag=experienceDetail&experienceId=$experienceHashId"
+        return client.get(ServiceShortUrlResource::class)
+            .createShortUrl(CreateShortUrlRequest(url, 24 * 3600 * 30)).data!!
     }
 
     fun userCanExperience(userId: String, experienceId: Long): Boolean {
