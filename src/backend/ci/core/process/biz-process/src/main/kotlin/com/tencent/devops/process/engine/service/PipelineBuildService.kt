@@ -42,7 +42,6 @@ import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatch
 import com.tencent.devops.common.event.enums.ActionType
 import com.tencent.devops.common.log.utils.BuildLogPrinter
 import com.tencent.devops.common.pipeline.Model
-import com.tencent.devops.common.pipeline.NameAndValue
 import com.tencent.devops.common.pipeline.container.TriggerContainer
 import com.tencent.devops.common.pipeline.enums.BuildStatus
 import com.tencent.devops.common.pipeline.enums.ChannelCode
@@ -568,14 +567,15 @@ class PipelineBuildService(
                                 continueWhenFailed = false,
                                 retryWhenFailed = false,
                                 runCondition = RunCondition.PRE_TASK_SUCCESS,
-                                customVariables = listOf(NameAndValue("postEntryParam", postAtom.postEntryParam)),
+                                customVariables = originAtomElement.additionalOptions?.customVariables,
                                 retryCount = 0,
                                 timeout = 100,
                                 otherTask = null,
                                 customCondition = null,
                                 pauseBeforeExec = null,
                                 subscriptionPauseUser = null,
-                                atomTimeout = null
+                                atomTimeout = null,
+                                postEntryParam = postAtom.postEntryParam
                             )
                             if (originAtomElement is MarketBuildAtomElement) {
                                 val marketBuildAtomElement = MarketBuildAtomElement(
