@@ -30,6 +30,8 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.tencent.devops.common.api.pojo.ErrorType
 import com.tencent.devops.common.api.pojo.Zone
+import com.tencent.devops.common.api.util.ApiUtil
+import com.tencent.devops.common.api.util.HashUtil
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.OkhttpUtils
 import com.tencent.devops.common.client.Client
@@ -46,9 +48,14 @@ import com.tencent.devops.dispatch.docker.dao.PipelineDockerIPInfoDao
 import com.tencent.devops.dispatch.docker.dao.PipelineDockerTaskSimpleDao
 import com.tencent.devops.dispatch.docker.exception.DockerServiceException
 import com.tencent.devops.dispatch.docker.pojo.DockerHostBuildInfo
+import com.tencent.devops.dispatch.docker.pojo.enums.DockerHostClusterType
+import com.tencent.devops.dispatch.docker.service.DockerHostBuildService
 import com.tencent.devops.dispatch.docker.utils.CommonUtils
 import com.tencent.devops.dispatch.docker.utils.DockerHostUtils
+import com.tencent.devops.dispatch.docker.utils.RedisUtils
 import com.tencent.devops.dispatch.pojo.enums.PipelineTaskStatus
+import com.tencent.devops.dispatch.pojo.redis.RedisBuild
+import com.tencent.devops.process.pojo.mq.PipelineBuildLessStartupDispatchEvent
 import com.tencent.devops.store.pojo.image.enums.ImageRDTypeEnum
 import com.tencent.devops.ticket.pojo.enums.CredentialType
 import okhttp3.MediaType
@@ -69,7 +76,8 @@ class DockerHostClient @Autowired constructor(
     private val redisOperation: RedisOperation,
     private val client: Client,
     private val dslContext: DSLContext,
-    private val defaultImageConfig: DefaultImageConfig
+    private val defaultImageConfig: DefaultImageConfig,
+    private val redisUtils: RedisUtils
 ) {
 
     companion object {
@@ -179,6 +187,123 @@ class DockerHostClient @Autowired constructor(
         dockerBuildStart(dockerIp, dockerHostPort, requestBody, dispatchMessage, driftIpInfo)
     }
 
+    fun startAgentLessBuild(
+        agentLessDockerIp: String,
+        agentLessDockerPort: Int,
+        event: PipelineBuildLessStartupDispatchEvent
+    ) {
+        val secretKey = ApiUtil.randomSecretKey()
+
+        val id = pipelineDockerBuildDao.startBuild(
+            dslContext = dslContext,
+            projectId = event.projectId,
+            pipelineId = event.pipelineId,
+            buildId = event.buildId,
+            vmSeqId = event.vmSeqId.toInt(),
+            secretKey = secretKey,
+            status = PipelineTaskStatus.RUNNING,
+            zone = if (null == event.zone) {
+                Zone.SHENZHEN.name
+            } else {
+                event.zone!!.name
+            },
+            dockerIp = agentLessDockerIp,
+            poolNo = 0
+        )
+
+        val agentId = HashUtil.encodeLongId(id)
+        redisUtils.setDockerBuild(
+            id = id, secretKey = secretKey,
+            redisBuild = RedisBuild(
+                vmName = agentId,
+                projectId = event.projectId,
+                pipelineId = event.pipelineId,
+                buildId = event.buildId,
+                vmSeqId = event.vmSeqId,
+                channelCode = event.channelCode,
+                zone = event.zone,
+                atoms = event.atoms
+            )
+        )
+
+        logger.info("[${event.buildId}]|BUILD_LESS| secretKey: $secretKey")
+        logger.info("[${event.buildId}]|BUILD_LESS| agentId: $agentId")
+        val dispatchType = event.dispatchType as DockerDispatchType
+        val dockerImage = when (dispatchType.dockerBuildVersion) {
+            DockerVersion.TLINUX1_2.value -> {
+                defaultImageConfig.getBuildLessTLinux1_2CompleteUri()
+            }
+            DockerVersion.TLINUX2_2.value -> {
+                defaultImageConfig.getBuildLessTLinux2_2CompleteUri()
+            }
+            else -> {
+                defaultImageConfig.getBuildLessCompleteUriByImageName(dispatchType.dockerBuildVersion)
+            }
+        }
+        logger.info("[${event.buildId}]|BUILD_LESS| Docker images is: $dockerImage")
+
+        var userName: String? = null
+        var password: String? = null
+        if (dispatchType.imageType == ImageType.THIRD) {
+            if (!dispatchType.credentialId.isNullOrBlank()) {
+                val ticketsMap = CommonUtils.getCredential(
+                    client = client,
+                    projectId = event.projectId,
+                    credentialId = dispatchType.credentialId!!,
+                    type = CredentialType.USERNAME_PASSWORD
+                )
+                userName = ticketsMap["v1"] as String
+                password = ticketsMap["v2"] as String
+            }
+        }
+
+        val requestBody = DockerHostBuildInfo(
+            projectId = event.projectId,
+            agentId = agentId,
+            pipelineId = event.pipelineId,
+            buildId = event.buildId,
+            vmSeqId = Integer.valueOf(event.vmSeqId),
+            secretKey = secretKey,
+            status = PipelineTaskStatus.RUNNING.status,
+            imageName = dockerImage,
+            containerId = "",
+            wsInHost = true,
+            poolNo = 0,
+            registryUser = userName ?: "",
+            registryPwd = password ?: "",
+            imageType = dispatchType.imageType?.type,
+            imagePublicFlag = dispatchType.imagePublicFlag,
+            imageRDType = if (dispatchType.imageRDType == null) {
+                null
+            } else {
+                ImageRDTypeEnum.getImageRDTypeByName(dispatchType.imageRDType!!).name
+            },
+            containerHashId = event.containerHashId
+        )
+
+        dockerBuildStart(agentLessDockerIp, agentLessDockerPort, requestBody, DispatchMessage(
+            id = agentId,
+            secretKey = secretKey,
+            gateway = "",
+            projectId = event.projectId,
+            pipelineId = event.pipelineId,
+            buildId = event.buildId,
+            dispatchMessage = event.dispatchType.value,
+            userId = event.userId,
+            vmSeqId = event.vmSeqId,
+            channelCode = event.channelCode,
+            vmNames = "",
+            atoms = event.atoms,
+            zone = event.zone,
+            containerHashId = event.containerHashId,
+            executeCount = event.executeCount,
+            containerId = event.containerId,
+            containerType = "",
+            stageId = "",
+            dispatchType = event.dispatchType
+        ), "", DockerHostClusterType.AGENT_LESS)
+    }
+
     fun endBuild(
         projectId: String,
         pipelineId: String,
@@ -233,16 +358,76 @@ class DockerHostClient @Autowired constructor(
         }
     }
 
+    fun endAgentLessBuild(
+        projectId: String,
+        pipelineId: String,
+        buildId: String,
+        vmSeqId: Int,
+        containerId: String,
+        dockerIp: String
+    ) {
+        val requestBody = DockerHostBuildInfo(
+            projectId = projectId,
+            agentId = "",
+            pipelineId = pipelineId,
+            buildId = buildId,
+            vmSeqId = vmSeqId,
+            secretKey = "",
+            status = 0,
+            imageName = "",
+            containerId = containerId,
+            wsInHost = true,
+            poolNo = 0,
+            registryUser = "",
+            registryPwd = "",
+            imageType = "",
+            imagePublicFlag = false,
+            imageRDType = null,
+            containerHashId = ""
+        )
+
+        val proxyUrl = dockerHostUtils.getIdc2DevnetProxyUrl("/api/docker-agentless/build/end", dockerIp)
+        val request = Request.Builder().url(proxyUrl)
+            .delete(
+                RequestBody.create(
+                    MediaType.parse("application/json; charset=utf-8"),
+                    JsonUtil.toJson(requestBody)
+                )
+            )
+            .addHeader("Accept", "application/json; charset=utf-8")
+            .addHeader("Content-Type", "application/json; charset=utf-8")
+            .build()
+
+        OkhttpUtils.doHttp(request).use { resp ->
+            val responseBody = resp.body()!!.string()
+            logger.info("[$projectId|$pipelineId|$buildId] End build Docker VM $dockerIp responseBody: $responseBody")
+            val response: Map<String, Any> = jacksonObjectMapper().readValue(responseBody)
+            if (response["status"] == 0) {
+                response["data"] as Boolean
+            } else {
+                val msg = response["message"] as String
+                logger.error("[$projectId|$pipelineId|$buildId] End build Docker VM failed, msg: $msg")
+                throw DockerServiceException(ErrorType.SYSTEM, ErrorCodeEnum.END_VM_ERROR.errorCode, "End build Docker VM failed, msg: $msg")
+            }
+        }
+    }
+
+
     private fun dockerBuildStart(
         dockerIp: String,
         dockerHostPort: Int,
         requestBody: DockerHostBuildInfo,
         dispatchMessage: DispatchMessage,
         driftIpInfo: String,
+        clusterType: DockerHostClusterType = DockerHostClusterType.COMMON,
         retryTime: Int = 0,
         unAvailableIpList: Set<String>? = null
     ) {
-        val proxyUrl = dockerHostUtils.getIdc2DevnetProxyUrl("/api/docker/build/start", dockerIp, dockerHostPort)
+        val proxyUrl = if (clusterType == DockerHostClusterType.COMMON) {
+            dockerHostUtils.getIdc2DevnetProxyUrl("/api/docker/build/start", dockerIp, dockerHostPort)
+        } else {
+            dockerHostUtils.getIdc2DevnetProxyUrl("/api/docker-agentless/build/start", dockerIp, dockerHostPort)
+        }
         val request = Request.Builder().url(proxyUrl)
             .post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), JsonUtil.toJson(requestBody)))
             .addHeader("Accept", "application/json; charset=utf-8")
