@@ -69,7 +69,7 @@ import org.springframework.stereotype.Component
 @Component
 class DockerHostBuildLessService(
     private val dockerHostConfig: DockerHostConfig,
-    private val pipelineEventDispatcher: PipelineEventDispatcher,
+    // private val pipelineEventDispatcher: PipelineEventDispatcher,
     private val dockerHostWorkSpaceService: DockerHostWorkSpaceService,
     private val buildResourceApi: BuildResourceApi,
     private val dockerHostBuildResourceApi: DockerHostBuildResourceApi,
@@ -95,7 +95,7 @@ class DockerHostBuildLessService(
     private val dockerCli = DockerClientBuilder.getInstance(config).withDockerHttpClient(longHttpClient).build()
 
     fun retryDispatch(event: PipelineBuildLessDockerStartupEvent) {
-        event.retryTime = event.retryTime - 1
+/*        event.retryTime = event.retryTime - 1
         if (event.retryTime > 0) {
             pipelineEventDispatcher.dispatch(event)
         } else {
@@ -111,7 +111,7 @@ class DockerHostBuildLessService(
                 AlertLevel.HIGH.name, "Docker重新分配事件失败", "Docker重新分配事件失败, " +
                     "母机IP:${CommonUtils.getInnerIP()}， 镜像名称：${event.dockerImage}"
             )
-        }
+        }*/
     }
 
     fun createContainer(event: PipelineBuildLessDockerStartupEvent): String {
