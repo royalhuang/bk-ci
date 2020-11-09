@@ -362,6 +362,7 @@ class BSAuthProjectApi @Autowired constructor(
     }
 
     private fun isAuthIgnore(projectCode: String): Boolean {
+        logger.info("auth ignore: ${bkAuthProperties.ignoreService}")
         val ignoreService = bkAuthProperties.ignoreService ?: return false
         val ignoreList = ignoreService.split(",")
         ignoreList?.forEach {
