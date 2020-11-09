@@ -59,12 +59,14 @@ import com.tencent.devops.dockerhost.utils.ENV_KEY_GATEWAY
 import com.tencent.devops.dockerhost.utils.ENV_KEY_PROJECT_ID
 import com.tencent.devops.process.pojo.mq.PipelineBuildLessDockerStartupEvent
 import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Component
 
 /**
  * 无构建环境的docker服务实现
  * @version 1.0
  */
 
+@Component
 class DockerHostBuildLessService(
     private val dockerHostConfig: DockerHostConfig,
     private val pipelineEventDispatcher: PipelineEventDispatcher,
