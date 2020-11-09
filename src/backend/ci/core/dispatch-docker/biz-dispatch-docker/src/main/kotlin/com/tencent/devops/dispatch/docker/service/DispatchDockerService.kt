@@ -33,6 +33,7 @@ import com.tencent.devops.dispatch.docker.pojo.DockerHostLoadConfig
 import com.tencent.devops.dispatch.docker.pojo.DockerIpInfoVO
 import com.tencent.devops.dispatch.docker.pojo.DockerIpListPage
 import com.tencent.devops.dispatch.docker.pojo.DockerIpUpdateVO
+import com.tencent.devops.dispatch.docker.pojo.enums.DockerHostClusterType
 import com.tencent.devops.dispatch.docker.utils.CommonUtils
 import com.tencent.devops.dispatch.docker.utils.DockerHostUtils
 import org.jooq.DSLContext
@@ -80,6 +81,7 @@ class DispatchDockerService @Autowired constructor(
                     enable = it.enable,
                     grayEnv = it.grayEnv,
                     specialOn = it.specialOn,
+                    clusterType = DockerHostClusterType.valueOf(it.clusterName),
                     createTime = it.gmtCreate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
                 ))
             }
@@ -114,7 +116,8 @@ class DispatchDockerService @Autowired constructor(
                     diskIOLoad = it.averageDiskIOLoad,
                     enable = it.enable,
                     grayEnv = it.grayEnv ?: false,
-                    specialOn = it.specialOn ?: false
+                    specialOn = it.specialOn ?: false,
+                    clusterName = it.clusterType?.name ?: DockerHostClusterType.COMMON.name
                 )
             }
 
