@@ -88,9 +88,20 @@ class TxStoreCodeccServiceImpl @Autowired constructor(
                 val codeStyleQualifiedScore = getQualifiedScore(storeType, "codeStyle")
                 val codeSecurityQualifiedScore = getQualifiedScore(storeType, "codeSecurity")
                 val codeMeasureQualifiedScore = getQualifiedScore(storeType, "codeMeasure")
+                // 判断codecc校验开关是否打开
+                val codeccFlagConfig = businessConfigDao.get(
+                    dslContext = dslContext,
+                    business = storeType,
+                    feature = "codeccFlag",
+                    businessValue = storeType
+                )
+                val codeccFlag = codeccFlagConfig?.configValue
                 // 判断插件代码库的扫描分数是否合格
-                codeccMeasureInfo.qualifiedFlag =
+                codeccMeasureInfo.qualifiedFlag = if (codeccFlag != null && !codeccFlag.toBoolean()) {
+                    true
+                } else {
                     codeStyleScore >= codeStyleQualifiedScore && codeSecurityScore >= codeSecurityQualifiedScore && codeMeasureScore >= codeMeasureQualifiedScore
+                }
             }
             if (codeccMeasureInfo.status != 3) {
                 // 后置处理操作

@@ -26,7 +26,6 @@
 
 package com.tencent.devops.worker.common.task.market
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.tencent.devops.common.api.enums.OSType
 import com.tencent.devops.common.api.exception.TaskExecuteException
 import com.tencent.devops.common.api.pojo.ErrorCode
@@ -41,6 +40,7 @@ import com.tencent.devops.process.pojo.BuildVariables
 import com.tencent.devops.process.pojo.report.enums.ReportTypeEnum
 import com.tencent.devops.store.pojo.atom.AtomEnv
 import com.tencent.devops.store.pojo.atom.enums.AtomStatusEnum
+import com.tencent.devops.store.pojo.common.ATOM_POST_ENTRY_PARAM
 import com.tencent.devops.store.pojo.common.enums.BuildHostTypeEnum
 import com.tencent.devops.worker.common.JAVA_PATH_ENV
 import com.tencent.devops.worker.common.WORKSPACE_ENV
@@ -74,7 +74,6 @@ open class MarketAtomTask : ITask() {
     private val inputFile = "input.json"
 
     private val sdkFile = ".sdk.json"
-    private val paramFile = ".param.json"
 
     private lateinit var atomExecuteFile: File
 
@@ -207,7 +206,6 @@ open class MarketAtomTask : ITask() {
         writeInputFile(atomTmpSpace, variables.plus(atomSensitiveDataMap))
 
         writeSdkEnv(atomTmpSpace, buildTask, buildVariables)
-        writeParamEnv(atomTmpSpace, workspace, buildTask, buildVariables)
 
         val javaFile = getJavaFile()
         val environment = runtimeVariables.plus(
@@ -253,9 +251,8 @@ open class MarketAtomTask : ITask() {
             // 获取插件post操作入口参数
             var postEntryParam: String? = null
             if (additionalOptions != null) {
-                logger.info("additionalOptions is:$additionalOptions")
                 val additionalOptionMap = JsonUtil.toMutableMapSkipEmpty(additionalOptions)
-                postEntryParam = additionalOptionMap["postEntryParam"]?.toString()
+                postEntryParam = additionalOptionMap[ATOM_POST_ENTRY_PARAM]?.toString()
             }
             val atomTarget = atomTargetHandleService.handleAtomTarget(
                 target = atomData.target,
@@ -397,19 +394,6 @@ open class MarketAtomTask : ITask() {
         inputFileFile.writeText(JsonUtil.toJson(sdkEnv))
     }
 
-    private fun writeParamEnv(tmpWorkspace: File, workspace: File, buildTask: BuildTask, buildVariables: BuildVariables) {
-        val param = mapOf(
-            "workspace" to jacksonObjectMapper().writeValueAsString(workspace),
-            "buildTask" to jacksonObjectMapper().writeValueAsString(buildTask),
-            "buildVariables" to jacksonObjectMapper().writeValueAsString(buildVariables)
-        )
-        val paramStr = jacksonObjectMapper().writeValueAsString(param)
-        val inputFileFile = File(tmpWorkspace, paramFile)
-
-        logger.info("paramFile is:$paramFile")
-        inputFileFile.writeText(paramStr)
-    }
-
     data class SdkEnv(
         val buildType: BuildType,
         val projectId: String,
@@ -445,7 +429,7 @@ open class MarketAtomTask : ITask() {
         if (monitorData != null) {
             addMonitorData(monitorData)
         }
-//        deletePluginFile(atomTmpSpace) // just for test
+        deletePluginFile(atomTmpSpace)
         val success: Boolean
         if (atomResult == null) {
             LoggerService.addYellowLine("No output")
