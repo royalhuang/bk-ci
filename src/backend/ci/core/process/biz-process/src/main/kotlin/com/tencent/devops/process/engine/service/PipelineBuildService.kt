@@ -90,6 +90,7 @@ import com.tencent.devops.process.service.BuildStartupParamService
 import com.tencent.devops.process.service.BuildVariableService
 import com.tencent.devops.process.service.ParamService
 import com.tencent.devops.process.utils.BUILD_NO
+import com.tencent.devops.process.utils.PIPELINE_BUILD_MSG
 import com.tencent.devops.process.utils.PIPELINE_NAME
 import com.tencent.devops.process.utils.PIPELINE_RETRY_BUILD_ID
 import com.tencent.devops.process.utils.PIPELINE_RETRY_COUNT
@@ -1789,7 +1790,7 @@ class PipelineBuildService(
                     pipelineId = pipelineId,
                     buildId = buildId,
                     param = JsonUtil.toJson(startParams.filter {
-                        realStartParamKeys.contains(it.key) || it.key == BUILD_NO
+                        realStartParamKeys.contains(it.key) || it.key == BUILD_NO || it.key == PIPELINE_BUILD_MSG
                     })
                 )
             }
