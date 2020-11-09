@@ -52,7 +52,8 @@ class PipelineDockerIPInfoDao {
         diskIOLoad: Int,
         enable: Boolean,
         grayEnv: Boolean,
-        specialOn: Boolean
+        specialOn: Boolean,
+        clusterName: String
     ) {
         with(TDispatchPipelineDockerIpInfo.T_DISPATCH_PIPELINE_DOCKER_IP_INFO) {
             val preRecord = dslContext.selectFrom(this)
@@ -69,6 +70,7 @@ class PipelineDockerIPInfoDao {
                     .set(ENABLE, enable)
                     .set(GRAY_ENV, grayEnv)
                     .set(SPECIAL_ON, specialOn)
+                    .set(CLUSTER_NAME, clusterName)
                     .set(GMT_MODIFIED, LocalDateTime.now())
                     .where(DOCKER_IP.eq(dockerIp))
                     .execute()
@@ -86,6 +88,7 @@ class PipelineDockerIPInfoDao {
                     ENABLE,
                     GRAY_ENV,
                     SPECIAL_ON,
+                    CLUSTER_NAME,
                     GMT_CREATE,
                     GMT_MODIFIED
                 ).values(
@@ -100,6 +103,7 @@ class PipelineDockerIPInfoDao {
                     enable,
                     grayEnv,
                     specialOn,
+                    clusterName,
                     LocalDateTime.now(),
                     LocalDateTime.now()
                 ).execute()
@@ -203,6 +207,7 @@ class PipelineDockerIPInfoDao {
     fun getAvailableDockerIpList(
         dslContext: DSLContext,
         grayEnv: Boolean,
+        clusterName: String,
         cpuLoad: Int,
         memLoad: Int,
         diskLoad: Int,
@@ -213,7 +218,8 @@ class PipelineDockerIPInfoDao {
             val conditions =
                 mutableListOf<Condition>(
                     ENABLE.eq(true),
-                    GRAY_ENV.eq(grayEnv)
+                    GRAY_ENV.eq(grayEnv),
+                    CLUSTER_NAME.eq(clusterName)
                 )
 
             if (specialIpSet.isEmpty() || specialIpSet.toString() == "[]") {

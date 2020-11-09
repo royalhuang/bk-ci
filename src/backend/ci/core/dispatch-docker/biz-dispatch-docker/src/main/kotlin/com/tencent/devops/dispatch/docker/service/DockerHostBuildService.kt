@@ -646,6 +646,17 @@ class DockerHostBuildService @Autowired constructor(
     }
 
     private fun dispatchStopCmd(record: TDispatchPipelineDockerBuildRecord, userId: String) {
+        if (record.dockerIp.isNotEmpty()) {
+            dockerHostClient.endAgentLessBuild(
+                projectId = record.projectId,
+                pipelineId = record.pipelineId,
+                buildId = record.buildId,
+                vmSeqId = record.vmSeqId?.toInt() ?: 0,
+                containerId = record.containerId,
+                dockerIp = record.dockerIp
+            )
+        }
+/*
         val dockerLessTask = pipelineDockerTaskDao.getTask(dslContext, record.buildId, record.vmSeqId)
             ?: run {
                 logger.warn("[${record.buildId}]|BUILD_LESS| can not found vmSeqId(${record.vmSeqId}) task")
@@ -669,7 +680,7 @@ class DockerHostBuildService @Autowired constructor(
                 buildId = record.buildId,
                 dockerContainerId = dockerLessTask.containerId
             )
-        )
+        )*/
     }
 
     fun getHost(hostTag: String): Result<DockerHostInfo>? {

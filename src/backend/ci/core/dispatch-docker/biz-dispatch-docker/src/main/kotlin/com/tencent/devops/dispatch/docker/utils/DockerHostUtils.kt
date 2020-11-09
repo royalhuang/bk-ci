@@ -44,6 +44,7 @@ import com.tencent.devops.dispatch.docker.dao.PipelineDockerTaskDriftDao
 import com.tencent.devops.dispatch.docker.dao.PipelineDockerTaskSimpleDao
 import com.tencent.devops.dispatch.docker.exception.DockerServiceException
 import com.tencent.devops.dispatch.docker.pojo.DockerHostLoadConfig
+import com.tencent.devops.dispatch.docker.pojo.enums.DockerHostClusterType
 import com.tencent.devops.dispatch.pojo.enums.PipelineTaskStatus
 import com.tencent.devops.model.dispatch.tables.records.TDispatchPipelineDockerIpInfoRecord
 import org.jooq.DSLContext
@@ -79,7 +80,14 @@ class DockerHostUtils @Autowired constructor(
     @Value("\${devopsGateway.idcProxy}")
     val idcProxy: String? = null
 
-    fun getAvailableDockerIpWithSpecialIps(projectId: String, pipelineId: String, vmSeqId: String, specialIpSet: Set<String>, unAvailableIpList: Set<String> = setOf()): Pair<String, Int> {
+    fun getAvailableDockerIpWithSpecialIps(
+        projectId: String,
+        pipelineId: String,
+        vmSeqId: String,
+        specialIpSet: Set<String>,
+        unAvailableIpList: Set<String> = setOf(),
+        clusterName: DockerHostClusterType = DockerHostClusterType.COMMON
+    ): Pair<String, Int> {
         val grayEnv = gray.isGray()
 
         // 获取负载配置
@@ -87,11 +95,30 @@ class DockerHostUtils @Autowired constructor(
         logger.info("Docker host load config: ${JsonUtil.toJson(dockerHostLoadConfigTriple)}")
 
         // 先取容量负载比较小的，同时满足负载条件的（负载阈值具体由OP平台配置)，从满足的节点中随机选择一个
-        val firstPair = dockerLoadCheck(dockerHostLoadConfigTriple.first, grayEnv, specialIpSet, unAvailableIpList)
+        val firstPair = dockerLoadCheck(
+            dockerHostLoadConfig = dockerHostLoadConfigTriple.first,
+            grayEnv = grayEnv,
+            clusterName = clusterName,
+            specialIpSet = specialIpSet,
+            unAvailableIpList = unAvailableIpList
+        )
         val dockerPair = if (firstPair.first.isEmpty()) {
-            val secondPair = dockerLoadCheck(dockerHostLoadConfigTriple.second, grayEnv, specialIpSet, unAvailableIpList)
+            val secondPair = dockerLoadCheck(
+                dockerHostLoadConfig = dockerHostLoadConfigTriple.second,
+                grayEnv = grayEnv,
+                clusterName = clusterName,
+                specialIpSet = specialIpSet,
+                unAvailableIpList = unAvailableIpList
+            )
             if (secondPair.first.isEmpty()) {
-                dockerLoadCheck(dockerHostLoadConfigTriple.third, grayEnv, specialIpSet, unAvailableIpList, true)
+                dockerLoadCheck(
+                    dockerHostLoadConfig = dockerHostLoadConfigTriple.third,
+                    grayEnv = grayEnv,
+                    clusterName = clusterName,
+                    specialIpSet = specialIpSet,
+                    unAvailableIpList = unAvailableIpList,
+                    finalCheck = true
+                )
             } else {
                 secondPair
             }
@@ -303,6 +330,7 @@ class DockerHostUtils @Autowired constructor(
     private fun dockerLoadCheck(
         dockerHostLoadConfig: DockerHostLoadConfig,
         grayEnv: Boolean,
+        clusterName: DockerHostClusterType,
         specialIpSet: Set<String>,
         unAvailableIpList: Set<String>,
         finalCheck: Boolean = false
@@ -311,6 +339,7 @@ class DockerHostUtils @Autowired constructor(
             pipelineDockerIpInfoDao.getAvailableDockerIpList(
                 dslContext = dslContext,
                 grayEnv = grayEnv,
+                clusterName = clusterName.name,
                 cpuLoad = dockerHostLoadConfig.cpuLoadThreshold,
                 memLoad = dockerHostLoadConfig.memLoadThreshold,
                 diskLoad = dockerHostLoadConfig.diskLoadThreshold,
