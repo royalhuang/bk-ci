@@ -92,7 +92,7 @@ class NoBuildClusterConfiguration : SchedulingConfigurer {
     @Bean
     fun pipelineEventDispatcher(rabbitTemplate: RabbitTemplate) = MQEventDispatcher(rabbitTemplate)
 
-/*    @Bean
+    @Bean
     fun dockerHostBuildLessService(
         dockerHostConfig: DockerHostConfig,
         pipelineEventDispatcher: PipelineEventDispatcher,
@@ -109,7 +109,7 @@ class NoBuildClusterConfiguration : SchedulingConfigurer {
             dockerHostBuildResourceApi,
             alertApi
         )
-    }*/
+    }
 
     @Bean
     fun rabbitAdmin(connectionFactory: ConnectionFactory): RabbitAdmin {

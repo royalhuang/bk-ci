@@ -31,20 +31,10 @@ import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.dispatch.pojo.DockerHostBuildInfo
 import com.tencent.devops.dockerhost.api.AgentLessDockerHostResource
-import com.tencent.devops.dockerhost.api.ServiceDockerHostResource
 import com.tencent.devops.dockerhost.exception.ContainerException
 import com.tencent.devops.dockerhost.exception.NoSuchImageException
-import com.tencent.devops.dockerhost.pojo.CheckImageRequest
-import com.tencent.devops.dockerhost.pojo.CheckImageResponse
-import com.tencent.devops.dockerhost.pojo.DockerBuildParam
-import com.tencent.devops.dockerhost.pojo.DockerHostLoad
-import com.tencent.devops.dockerhost.pojo.DockerLogsResponse
-import com.tencent.devops.dockerhost.pojo.DockerRunParam
-import com.tencent.devops.dockerhost.pojo.DockerRunResponse
-import com.tencent.devops.dockerhost.pojo.Status
-import com.tencent.devops.dockerhost.services.DockerHostBuildLessService
+import com.tencent.devops.dockerhost.services.DockerHostBuildAgentLessService
 import com.tencent.devops.dockerhost.services.DockerHostBuildService
-import com.tencent.devops.dockerhost.services.DockerService
 import com.tencent.devops.dockerhost.utils.CommonUtils
 import com.tencent.devops.process.engine.common.VMUtils
 import org.slf4j.LoggerFactory
@@ -53,13 +43,13 @@ import javax.servlet.http.HttpServletRequest
 
 @RestResource
 class AgentLessDockerHostResourceImpl @Autowired constructor(
-    private val dockerHostBuildLessService: DockerHostBuildLessService,
+    private val dockerHostBuildAgentLessService: DockerHostBuildAgentLessService,
     private val dockerHostBuildService: DockerHostBuildService
 ) : AgentLessDockerHostResource {
 
     override fun startBuild(dockerHostBuildInfo: DockerHostBuildInfo): Result<String> {
         return try {
-            Result(dockerHostBuildLessService.createContainer(dockerHostBuildInfo))
+            Result(dockerHostBuildAgentLessService.createContainer(dockerHostBuildInfo))
         } catch (e: NoSuchImageException) {
             logger.error("Create container container failed, no such image. pipelineId: ${dockerHostBuildInfo.pipelineId}, vmSeqId: ${dockerHostBuildInfo.vmSeqId}, err: ${e.message}")
             dockerHostBuildService.log(
@@ -85,7 +75,7 @@ class AgentLessDockerHostResourceImpl @Autowired constructor(
 
     override fun endBuild(dockerHostBuildInfo: DockerHostBuildInfo): Result<Boolean> {
         logger.warn("[${dockerHostBuildInfo.buildId}] | Stop the container, containerId: ${dockerHostBuildInfo.containerId}")
-        dockerHostBuildLessService.stopContainer(dockerHostBuildInfo.buildId, dockerHostBuildInfo.containerId)
+        dockerHostBuildAgentLessService.stopContainer(dockerHostBuildInfo.buildId, dockerHostBuildInfo.containerId)
 
         return Result(true)
     }
