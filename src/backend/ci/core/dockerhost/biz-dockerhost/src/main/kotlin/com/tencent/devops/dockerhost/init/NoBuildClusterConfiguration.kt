@@ -103,7 +103,7 @@ class NoBuildClusterConfiguration : SchedulingConfigurer {
     ): DockerHostBuildLessService {
         return DockerHostBuildLessService(
             dockerHostConfig,
-            pipelineEventDispatcher,
+            // pipelineEventDispatcher,
             dockerHostWorkSpaceService,
             buildResourceApi,
             dockerHostBuildResourceApi,
