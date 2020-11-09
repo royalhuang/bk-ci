@@ -67,9 +67,9 @@ import kotlin.system.exitProcess
  * @version 1.0
  */
 
-/*@Configuration
+@Configuration
 @ConditionalOnProperty(prefix = "dockerhost", name = ["mode"], havingValue = "docker_no_build")
-@EnableScheduling*/
+@EnableScheduling
 class NoBuildClusterConfiguration : SchedulingConfigurer {
 
     @Autowired
@@ -92,7 +92,7 @@ class NoBuildClusterConfiguration : SchedulingConfigurer {
     @Bean
     fun pipelineEventDispatcher(rabbitTemplate: RabbitTemplate) = MQEventDispatcher(rabbitTemplate)
 
-    @Bean
+/*    @Bean
     fun dockerHostBuildLessService(
         dockerHostConfig: DockerHostConfig,
         pipelineEventDispatcher: PipelineEventDispatcher,
@@ -103,13 +103,13 @@ class NoBuildClusterConfiguration : SchedulingConfigurer {
     ): DockerHostBuildLessService {
         return DockerHostBuildLessService(
             dockerHostConfig,
-            // pipelineEventDispatcher,
+            pipelineEventDispatcher,
             dockerHostWorkSpaceService,
             buildResourceApi,
             dockerHostBuildResourceApi,
             alertApi
         )
-    }
+    }*/
 
     @Bean
     fun rabbitAdmin(connectionFactory: ConnectionFactory): RabbitAdmin {
