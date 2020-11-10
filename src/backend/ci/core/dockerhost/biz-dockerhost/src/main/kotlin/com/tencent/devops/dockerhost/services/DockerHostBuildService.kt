@@ -101,7 +101,7 @@ class DockerHostBuildService(
         private val logger = LoggerFactory.getLogger(DockerHostBuildService::class.java)
     }
 
-    fun startBuild(): DockerHostBuildInfo? {
+/*    fun startBuild(): DockerHostBuildInfo? {
         val result = dockerHostBuildApi.startBuild(CommonUtils.getInnerIP())
         if (result != null) {
             if (result.isNotOk()) {
@@ -155,7 +155,7 @@ class DockerHostBuildService(
             }
         }
         return result!!.data!!
-    }
+    }*/
 
     fun pullImage(
         imageType: String?,
