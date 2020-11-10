@@ -71,13 +71,11 @@ class TxStoreCodeccServiceImpl @Autowired constructor(
         logger.info("getCodeccMeasureInfo userId:$userId,storeType:$storeType,storeCode:$storeCode,storeId:$storeId,buildId:$buildId")
         validatePermission(userId, storeCode, storeType)
         var codeccBuildId: String? = buildId
-        if (codeccBuildId != null) {
-            if (storeId != null) {
-                // 如果组件ID不为空则会去redis中获取启动codecc任务存的buildId
-                codeccBuildId = redisOperation.get("$STORE_REPO_COMMIT_KEY_PREFIX:$storeType:$storeCode:$storeId")
-            }
+        if (codeccBuildId == null && storeId != null) {
+            // 如果组件ID不为空则会去redis中获取启动codecc任务存的buildId
+            codeccBuildId = redisOperation.get("$STORE_REPO_CODECC_BUILD_KEY_PREFIX:$storeType:$storeCode:$storeId")
         }
-        logger.info("getCodeccMeasureInfo buildId:$buildId")
+        logger.info("getCodeccMeasureInfo codeccBuildId:$codeccBuildId")
         val mameSpaceName = storeCommonService.getStoreRepoNameSpaceName(StoreTypeEnum.valueOf(storeType))
         val codeccMeasureInfoResult = client.get(ServiceCodeccResource::class).getCodeccMeasureInfo(
             repoId = "$mameSpaceName/$storeCode",
