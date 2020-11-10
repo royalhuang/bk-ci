@@ -42,7 +42,7 @@ abstract class AbstractDockerHostBuildService constructor(
 
     abstract fun createContainer(dockerHostBuildInfo: DockerHostBuildInfo): String
 
-    abstract fun stopContainer(buildId: String, containerId: String, vmSeqId: Int)
+    abstract fun stopContainer(dockerHostBuildInfo: DockerHostBuildInfo)
 
     fun log(buildId: String, message: String, tag: String?, containerHashId: String?) {
         return log(buildId, false, message, tag, containerHashId)
