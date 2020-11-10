@@ -155,25 +155,25 @@ class DockerHostBuildAgentLessService(
         }
     }
 
-    override fun stopContainer(buildId: String, containerId: String, vmSeqId: Int) {
+    override fun stopContainer(dockerHostBuildInfo: DockerHostBuildInfo) {
         try {
             // docker stop
-            val containerInfo = httpDockerCli.inspectContainerCmd(containerId).exec()
+            val containerInfo = httpDockerCli.inspectContainerCmd(dockerHostBuildInfo.containerId).exec()
             if ("exited" != containerInfo.state.status) {
-                httpDockerCli.stopContainerCmd(containerId).withTimeout(15).exec()
+                httpDockerCli.stopContainerCmd(dockerHostBuildInfo.containerId).withTimeout(15).exec()
             }
         } catch (e: NotModifiedException) {
-            logger.error("[$buildId]| Stop the container failed, containerId: $containerId already stopped.")
+            logger.error("[${dockerHostBuildInfo.buildId}]| Stop the container failed, containerId: ${dockerHostBuildInfo.containerId} already stopped.")
         } catch (ignored: Throwable) {
-            logger.error("[$buildId]| Stop the container failed, containerId: $containerId, error msg: $ignored", ignored)
+            logger.error("[${dockerHostBuildInfo.buildId}]| Stop the container failed, containerId: ${dockerHostBuildInfo.containerId}, error msg: $ignored", ignored)
         }
 
         try {
             // docker rm
-            httpDockerCli.removeContainerCmd(containerId).exec()
+            httpDockerCli.removeContainerCmd(dockerHostBuildInfo.containerId).exec()
         } catch (ignored: Throwable) {
             logger.error(
-                "[$buildId]| Stop the container failed, containerId: $containerId, error msg: $ignored",
+                "[${dockerHostBuildInfo.buildId}]| Stop the container failed, containerId: ${dockerHostBuildInfo.containerId}, error msg: $ignored",
                 ignored
             )
         }

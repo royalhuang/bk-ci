@@ -165,7 +165,7 @@ class ServiceDockerHostResourceImpl @Autowired constructor(
 
     override fun endBuild(dockerHostBuildInfo: DockerHostBuildInfo): Result<Boolean> {
         logger.warn("Stop the container, containerId: ${dockerHostBuildInfo.containerId}")
-        dockerHostBuildService.stopContainer(dockerHostBuildInfo.buildId, dockerHostBuildInfo.containerId, dockerHostBuildInfo.vmSeqId)
+        dockerHostBuildService.stopContainer(dockerHostBuildInfo)
 
         return Result(true)
     }

@@ -313,22 +313,22 @@ class DockerHostBuildService(
         }
     }
 
-    override fun stopContainer(buildId: String, containerId: String, vmSeqId: Int) {
+    override fun stopContainer(dockerHostBuildInfo: DockerHostBuildInfo) {
         try {
             // docker stop
-            val containerInfo = httpLongDockerCli.inspectContainerCmd(containerId).exec()
+            val containerInfo = httpLongDockerCli.inspectContainerCmd(dockerHostBuildInfo.containerId).exec()
             if ("exited" != containerInfo.state.status) {
-                httpLongDockerCli.stopContainerCmd(containerId).withTimeout(15).exec()
+                httpLongDockerCli.stopContainerCmd(dockerHostBuildInfo.containerId).withTimeout(15).exec()
             }
         } catch (e: Throwable) {
-            logger.error("Stop the container failed, containerId: $containerId, error msg: $e")
+            logger.error("Stop the container failed, containerId: ${dockerHostBuildInfo.containerId}, error msg: $e")
         }
 
         try {
             // docker rm
-            httpLongDockerCli.removeContainerCmd(containerId).exec()
+            httpLongDockerCli.removeContainerCmd(dockerHostBuildInfo.containerId).exec()
         } catch (e: Throwable) {
-            logger.error("Stop the container failed, containerId: $containerId, error msg: $e")
+            logger.error("Stop the container failed, containerId: ${dockerHostBuildInfo.containerId}, error msg: $e")
         } finally {
             // 找出所有跟本次构建关联的dockerRun启动容器并停止容器
             val containerInfo = httpLongDockerCli.listContainersCmd().withStatusFilter(setOf("running")).exec()
@@ -336,12 +336,12 @@ class DockerHostBuildService(
                 try {
                     // logger.info("${dockerBuildInfo.buildId}|${dockerBuildInfo.vmSeqId} containerName: ${container.names[0]}")
                     val containerName = container.names[0]
-                    if (containerName.contains(getDockerRunStopPattern(buildId, vmSeqId))) {
-                        logger.info("$buildId|$vmSeqId stop dockerRun container, containerId: ${container.id}")
+                    if (containerName.contains(getDockerRunStopPattern(dockerHostBuildInfo.buildId, dockerHostBuildInfo.vmSeqId))) {
+                        logger.info("${dockerHostBuildInfo.buildId}|${dockerHostBuildInfo.vmSeqId} stop dockerRun container, containerId: ${container.id}")
                         httpLongDockerCli.stopContainerCmd(container.id).withTimeout(15).exec()
                     }
                 } catch (e: Exception) {
-                    logger.error("$buildId|$vmSeqId Stop dockerRun container failed, containerId: ${container.id}", e)
+                    logger.error("${dockerHostBuildInfo.buildId}|${dockerHostBuildInfo.vmSeqId} Stop dockerRun container failed, containerId: ${container.id}", e)
                 }
             }
         }
