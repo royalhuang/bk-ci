@@ -43,6 +43,7 @@ import com.tencent.devops.dispatch.pojo.DockerHostBuildInfo
 import com.tencent.devops.dockerhost.config.DockerHostConfig
 import com.tencent.devops.dockerhost.dispatch.AlertApi
 import com.tencent.devops.dockerhost.dispatch.DockerEnv
+import com.tencent.devops.dockerhost.dispatch.DockerHostBuildResourceApi
 import com.tencent.devops.dockerhost.exception.ContainerException
 import com.tencent.devops.dockerhost.utils.BK_DISTCC_LOCAL_IP
 import com.tencent.devops.dockerhost.utils.CommonUtils
@@ -64,35 +65,19 @@ import org.springframework.stereotype.Service
 
 @Service
 class DockerHostBuildAgentLessService(
+    dockerHostBuildApi: DockerHostBuildResourceApi,
     private val dockerHostConfig: DockerHostConfig,
     private val dockerHostWorkSpaceService: DockerHostWorkSpaceService,
     private val alertApi: AlertApi
-) {
+) : AbstractDockerHostBuildService(dockerHostConfig, dockerHostBuildApi) {
 
-    private val config = DefaultDockerClientConfig.createDefaultConfigBuilder()
-        .withDockerConfig(dockerHostConfig.dockerConfig)
-        .withApiVersion(dockerHostConfig.apiVersion)
-        .withRegistryUrl(dockerHostConfig.registryUrl)
-        .withRegistryUsername(dockerHostConfig.registryUsername)
-        .withRegistryPassword(SecurityUtil.decrypt(dockerHostConfig.registryPassword!!))
-        .build()!!
-
-    var longHttpClient: DockerHttpClient = OkDockerHttpClient.Builder()
-        .dockerHost(config.dockerHost)
-        .sslConfig(config.sslConfig)
-        .connectTimeout(5000)
-        .readTimeout(300000)
-        .build()
-
-    private val dockerCli = DockerClientBuilder.getInstance(config).withDockerHttpClient(longHttpClient).build()
-
-    fun createContainer(dockerHostBuildInfo: DockerHostBuildInfo): String {
+    override fun createContainer(dockerHostBuildInfo: DockerHostBuildInfo): String {
         try {
             // docker pull
             val imageName = CommonUtils.normalizeImageName(dockerHostBuildInfo.imageName)
             try {
                 LocalImageCache.saveOrUpdate(imageName)
-                dockerCli.pullImageCmd(imageName).exec(PullImageResultCallback()).awaitCompletion()
+                httpDockerCli.pullImageCmd(imageName).exec(PullImageResultCallback()).awaitCompletion()
             } catch (t: Throwable) {
                 logger.warn("[${dockerHostBuildInfo.buildId}]|Fail to pull the image $imageName of build ${dockerHostBuildInfo.buildId}", t)
             }
@@ -128,7 +113,7 @@ class DockerHostBuildAgentLessService(
                 Bind(linkPath, volumeTmpLink),
                 Bind(hostWorkspace, volumeWs)
             )
-            val container = dockerCli.createContainerCmd(imageName)
+            val container = httpDockerCli.createContainerCmd(imageName)
                 .withCmd("/bin/sh", ENTRY_POINT_CMD)
                 .withEnv(
                     listOf(
@@ -157,7 +142,7 @@ class DockerHostBuildAgentLessService(
                 .exec()
 
             logger.info("[${dockerHostBuildInfo.buildId}]|Created container $container")
-            dockerCli.startContainerCmd(container.id).exec()
+            httpDockerCli.startContainerCmd(container.id).exec()
 
             return container.id
         } catch (ignored: Throwable) {
@@ -170,12 +155,12 @@ class DockerHostBuildAgentLessService(
         }
     }
 
-    fun stopContainer(buildId: String, containerId: String) {
+    override fun stopContainer(buildId: String, containerId: String, vmSeqId: Int) {
         try {
             // docker stop
-            val containerInfo = dockerCli.inspectContainerCmd(containerId).exec()
+            val containerInfo = httpDockerCli.inspectContainerCmd(containerId).exec()
             if ("exited" != containerInfo.state.status) {
-                dockerCli.stopContainerCmd(containerId).withTimeout(15).exec()
+                httpDockerCli.stopContainerCmd(containerId).withTimeout(15).exec()
             }
         } catch (e: NotModifiedException) {
             logger.error("[$buildId]| Stop the container failed, containerId: $containerId already stopped.")
@@ -185,7 +170,7 @@ class DockerHostBuildAgentLessService(
 
         try {
             // docker rm
-            dockerCli.removeContainerCmd(containerId).exec()
+            httpDockerCli.removeContainerCmd(containerId).exec()
         } catch (ignored: Throwable) {
             logger.error(
                 "[$buildId]| Stop the container failed, containerId: $containerId, error msg: $ignored",
