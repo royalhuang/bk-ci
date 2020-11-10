@@ -185,7 +185,8 @@ class PreBuildService @Autowired constructor(
     ): Model {
         val stageList = mutableListOf<Stage>()
 
-        var buildFormProperties = mutableListOf<BuildFormProperty>()
+        logger.info("createPipelineModel.")
+        val buildFormProperties = mutableListOf<BuildFormProperty>()
         if (prebuild.variables != null && prebuild.variables!!.isNotEmpty()) {
             logger.info("variables is not empty.")
             prebuild.variables!!.forEach {
