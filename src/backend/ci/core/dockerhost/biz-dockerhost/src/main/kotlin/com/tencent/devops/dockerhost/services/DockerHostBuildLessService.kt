@@ -59,7 +59,6 @@ import com.tencent.devops.dockerhost.utils.ENV_KEY_GATEWAY
 import com.tencent.devops.dockerhost.utils.ENV_KEY_PROJECT_ID
 import com.tencent.devops.process.pojo.mq.PipelineBuildLessDockerStartupEvent
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 
 /**
  * 无构建环境的docker服务实现

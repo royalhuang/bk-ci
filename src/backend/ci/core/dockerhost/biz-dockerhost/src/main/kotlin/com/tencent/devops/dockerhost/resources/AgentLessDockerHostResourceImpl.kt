@@ -75,7 +75,7 @@ class AgentLessDockerHostResourceImpl @Autowired constructor(
 
     override fun endBuild(dockerHostBuildInfo: DockerHostBuildInfo): Result<Boolean> {
         logger.warn("[${dockerHostBuildInfo.buildId}] | Stop the container, containerId: ${dockerHostBuildInfo.containerId}")
-        dockerHostBuildAgentLessService.stopContainer(dockerHostBuildInfo.buildId, dockerHostBuildInfo.containerId)
+        dockerHostBuildAgentLessService.stopContainer(dockerHostBuildInfo.buildId, dockerHostBuildInfo.containerId, dockerHostBuildInfo.vmSeqId)
 
         return Result(true)
     }
