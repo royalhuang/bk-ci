@@ -386,7 +386,9 @@ class DockerHostClient @Autowired constructor(
             containerHashId = ""
         )
 
-        val proxyUrl = dockerHostUtils.getIdc2DevnetProxyUrl("/api/docker-agentless/build/end", dockerIp)
+        val dockerIpInfo = pipelineDockerIPInfoDao.getDockerIpInfo(dslContext, dockerIp) ?: throw DockerServiceException(
+            ErrorType.SYSTEM, ErrorCodeEnum.DOCKER_IP_NOT_AVAILABLE.errorCode, "Docker IP: $dockerIp is not available.")
+        val proxyUrl = "http://" + dockerIp + ":" + dockerIpInfo.dockerHostPort + "/api/docker-agentless/build/end"
         val request = Request.Builder().url(proxyUrl)
             .delete(
                 RequestBody.create(
@@ -426,7 +428,7 @@ class DockerHostClient @Autowired constructor(
         val proxyUrl = if (clusterType == DockerHostClusterType.COMMON) {
             dockerHostUtils.getIdc2DevnetProxyUrl("/api/docker/build/start", dockerIp, dockerHostPort)
         } else {
-            dockerHostUtils.getIdc2DevnetProxyUrl("/api/docker-agentless/build/start", dockerIp, dockerHostPort)
+            "http://$dockerIp:$dockerHostPort/api/docker-agentless/build/start"
         }
         val request = Request.Builder().url(proxyUrl)
             .post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), JsonUtil.toJson(requestBody)))
