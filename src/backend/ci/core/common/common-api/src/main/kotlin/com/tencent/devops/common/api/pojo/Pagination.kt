@@ -24,10 +24,15 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.tencent.devops.agent
+package com.tencent.devops.common.api.pojo
 
-const val AGENT_VERSION = 12.12
+import io.swagger.annotations.ApiModel
+import io.swagger.annotations.ApiModelProperty
 
-fun main(argv: Array<String>) {
-    println(AGENT_VERSION)
-}
+@ApiModel("分页数据包装模型")
+data class Pagination<out T>(
+    @ApiModelProperty("是否有下一页", required = true)
+    val hasNext: Boolean,
+    @ApiModelProperty("数据", required = true)
+    val records: List<T>
+)
