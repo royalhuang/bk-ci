@@ -26,6 +26,7 @@
 
 package com.tencent.devops.dockerhost.services
 
+import com.github.dockerjava.api.exception.NotModifiedException
 import com.github.dockerjava.api.model.AccessMode
 import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.Binds
@@ -176,6 +177,8 @@ class DockerHostBuildAgentLessService(
             if ("exited" != containerInfo.state.status) {
                 dockerCli.stopContainerCmd(containerId).withTimeout(15).exec()
             }
+        } catch (e: NotModifiedException) {
+            logger.error("[$buildId]| Stop the container failed, containerId: $containerId already stopped.")
         } catch (ignored: Throwable) {
             logger.error("[$buildId]| Stop the container failed, containerId: $containerId, error msg: $ignored", ignored)
         }
