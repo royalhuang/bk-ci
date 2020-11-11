@@ -604,7 +604,6 @@ class PipelineBuildService(
                                 customCondition = null,
                                 pauseBeforeExec = null,
                                 subscriptionPauseUser = null,
-                                atomTimeout = null,
                                 postEntryParam = postAtom.postEntryParam
                             )
                             if (originAtomElement is MarketBuildAtomElement) {
