@@ -323,7 +323,7 @@ class TxAtomReleaseServiceImpl : TxAtomReleaseService, AtomReleaseServiceImpl() 
     override fun doPassTestPreOperation(atomId: String, atomStatus: Byte, userId: String) {
         // 判断codecc校验开关是否打开
         val codeccFlag = getCodeccFlag(StoreTypeEnum.ATOM.name)
-        if (codeccFlag == null || !codeccFlag) {
+        if (codeccFlag != null && codeccFlag) {
             marketAtomDao.setAtomStatusById(dslContext, atomId, atomStatus, userId, "")
             storeWebsocketService.sendWebsocketMessage(userId, atomId)
         }
