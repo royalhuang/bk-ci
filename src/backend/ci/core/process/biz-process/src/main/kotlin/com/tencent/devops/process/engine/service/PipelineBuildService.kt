@@ -1004,11 +1004,7 @@ class PipelineBuildService(
                 params = arrayOf(buildId)
             )
 
-        val model = pipelineRepositoryService.getModel(pipelineId) ?: throw ErrorCodeException(
-            statusCode = Response.Status.NOT_FOUND.statusCode,
-            errorCode = ProcessMessageCode.ERROR_PIPELINE_MODEL_NOT_EXISTS,
-            defaultMessage = "流水线编排不存在"
-        )
+        val model = getBuildDetail(projectId, pipelineId, buildId, ChannelCode.BS, true).model
 
         val runtimeVars = buildVariableService.getAllVariable(buildId)
         model.stages.forEachIndexed { index, s ->
