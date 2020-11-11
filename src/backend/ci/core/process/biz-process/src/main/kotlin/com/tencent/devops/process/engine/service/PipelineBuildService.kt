@@ -342,7 +342,7 @@ class PipelineBuildService(
                     params = arrayOf(buildId)
                 )
 
-            if (!BuildStatus.isFinish(buildInfo.status) || BuildStatus.isPause(buildInfo.status)) {
+            if (!BuildStatus.isFinish(buildInfo.status)) {
                 throw ErrorCodeException(
                     errorCode = ProcessMessageCode.ERROR_DUPLICATE_BUILD_RETRY_ACT,
                     defaultMessage = "重试已经启动，忽略重复的请求"
@@ -376,8 +376,6 @@ class PipelineBuildService(
                     errorCode = ProcessMessageCode.DENY_START_BY_MANUAL
                 )
             }
-
-            // 清理插件暂停信息
 
             val params = mutableMapOf<String, Any>()
             val originVars = buildVariableService.getAllVariable(buildId)
@@ -1004,11 +1002,7 @@ class PipelineBuildService(
                 params = arrayOf(buildId)
             )
 
-        val model = pipelineRepositoryService.getModel(pipelineId) ?: throw ErrorCodeException(
-            statusCode = Response.Status.NOT_FOUND.statusCode,
-            errorCode = ProcessMessageCode.ERROR_PIPELINE_MODEL_NOT_EXISTS,
-            defaultMessage = "流水线编排不存在"
-        )
+        val model = getBuildDetail(projectId, pipelineId, buildId, ChannelCode.BS, true).model
 
         val runtimeVars = buildVariableService.getAllVariable(buildId)
         model.stages.forEachIndexed { index, s ->
@@ -1936,7 +1930,7 @@ class PipelineBuildService(
                 params = arrayOf(buildId)
             )
 
-        if(buildInfo.pipelineId != pipelineId) {
+        if (buildInfo.pipelineId != pipelineId) {
             throw ErrorCodeException(
                     errorCode = ProcessMessageCode.ERROR_PIPLEINE_INPUT
             )

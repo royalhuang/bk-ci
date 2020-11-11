@@ -271,6 +271,7 @@ class PipelineBuildDao {
                 update.set(START_TIME, LocalDateTime.now())
             }
             update.set(IS_RETRY, retry)
+            update.setNull(ERROR_INFO)
             update.where(BUILD_ID.eq(buildId)).execute()
         }
     }
@@ -302,8 +303,6 @@ class PipelineBuildDao {
 
             if (errorInfoList != null) {
                 baseQuery.set(ERROR_INFO, JsonUtil.toJson(errorInfoList))
-            } else {
-                baseQuery.setNull(ERROR_INFO)
             }
 
             baseQuery.where(BUILD_ID.eq(buildId)).execute()
