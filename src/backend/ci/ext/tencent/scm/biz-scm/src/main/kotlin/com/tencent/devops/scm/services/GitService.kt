@@ -114,7 +114,7 @@ class GitService @Autowired constructor(
     private lateinit var gitCIOauthUrl: String
 
     @Value("\${gitCI.tokenExpiresIn:#{null}}")
-    private val tokenExpiresIn: Int? = 7200
+    private val tokenExpiresIn: Int? = 86400
 
     private val clientId: String = gitConfig.clientId
     private val clientSecret: String = gitConfig.clientSecret
