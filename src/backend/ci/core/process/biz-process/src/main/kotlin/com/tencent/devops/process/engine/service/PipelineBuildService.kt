@@ -99,7 +99,6 @@ import com.tencent.devops.process.utils.PIPELINE_START_USER_NAME
 import com.tencent.devops.process.utils.PIPELINE_START_WEBHOOK_USER_ID
 import com.tencent.devops.process.utils.PIPELINE_VERSION
 import org.slf4j.LoggerFactory
-import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.stereotype.Service
 import javax.ws.rs.NotFoundException
 import javax.ws.rs.core.Response
@@ -124,7 +123,6 @@ class PipelineBuildService(
     private val buildStartupParamService: BuildStartupParamService,
     private val paramService: ParamService,
     private val pipelineBuildQualityService: PipelineBuildQualityService,
-    private val rabbitTemplate: RabbitTemplate,
     private val buildLogPrinter: BuildLogPrinter,
     private val buildParamCompatibilityTransformer: BuildParametersCompatibilityTransformer
 ) {
@@ -859,10 +857,7 @@ class PipelineBuildService(
                 defaultMessage = "构建任务${buildId}不存在",
                 params = arrayOf(buildId))
 
-        val model = pipelineRepositoryService.getModel(pipelineId) ?: throw ErrorCodeException(
-            statusCode = Response.Status.NOT_FOUND.statusCode,
-            errorCode = ProcessMessageCode.ERROR_PIPELINE_MODEL_NOT_EXISTS,
-            defaultMessage = "流水线编排不存在")
+        val model = getBuildDetail(projectId, pipelineId, buildId, ChannelCode.BS, true).model
 
         val runtimeVars = buildVariableService.getAllVariable(buildId)
         model.stages.forEachIndexed { index, s ->
