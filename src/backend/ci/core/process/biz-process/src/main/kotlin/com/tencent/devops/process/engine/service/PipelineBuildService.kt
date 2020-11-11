@@ -232,10 +232,7 @@ class PipelineBuildService(
                 id = PIPELINE_BUILD_MSG,
                 required = true,
                 type = BuildFormPropertyType.STRING,
-                defaultValue = MessageCodeUtil.getCodeLanMessage(
-                    messageCode = BUILD_MSG_MANUAL,
-                    defaultMessage = "手工触发"
-                ),
+                defaultValue = "",
                 options = null,
                 desc = null,
                 repoHashId = null,
@@ -247,6 +244,10 @@ class PipelineBuildService(
                 label = MessageCodeUtil.getCodeLanMessage(
                     messageCode = BUILD_MSG_LABEL,
                     defaultMessage = "构建信息"
+                ),
+                placeholder = MessageCodeUtil.getCodeLanMessage(
+                    messageCode = BUILD_MSG_MANUAL,
+                    defaultMessage = "手工触发"
                 )
             )
         )
