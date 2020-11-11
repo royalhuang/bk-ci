@@ -102,7 +102,7 @@ class HeartbeatControl @Autowired constructor(
                     // 归类于插件执行错误。同时插件需要进行优化限制，防止被过量使用。
                     pipelineRuntimeService.setTaskErrorInfo(
                         buildId = event.buildId,
-                        taskId = VMUtils.genStartVMTaskId(event.containerId),
+                        taskId = taskMap["taskId"].toString(),
                         errorType = ErrorType.USER,
                         errorCode = ErrorCode.PLUGIN_DEFAULT_ERROR,
                         errorMsg = "Agent心跳超时/Agent Dead"
