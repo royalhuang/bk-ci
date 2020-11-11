@@ -877,6 +877,9 @@ class PipelineBuildDetailService @Autowired constructor(
                         c.startEpoch = e.startEpoch
                     }
                     e.version = findTaskVersion(buildId, e.getAtomCode(), e.version) ?: e.version
+                    e.errorType = null
+                    e.errorCode = null
+                    e.errorMsg = null
                     update = true
                     return Traverse.BREAK
                 }
