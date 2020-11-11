@@ -203,7 +203,6 @@ class BuildEndControl @Autowired constructor(
 
     private fun PipelineBuildFinishEvent.fixTask(buildInfo: BuildInfo, buildStatus: BuildStatus) {
         val allBuildTask = pipelineRuntimeService.getAllBuildTask(buildId)
-        logger.info("[${buildInfo.buildId}] PipelineBuildFinishEvent.fixTask allBuildTask=$allBuildTask")
 
         allBuildTask.forEach {
             // 将所有还在运行中的任务全部结束掉
@@ -232,6 +231,8 @@ class BuildEndControl @Autowired constructor(
                     }
                 }
             }
+
+            logger.info("[${buildInfo.buildId}] PipelineBuildFinishEvent.fixTask ${it.taskName}(Job_${it.containerId}_${it.taskSeq})=${it.errorType},${it.errorCode},${it.errorMsg}")
 
             if (it.errorType != null) {
                 val infos = mutableListOf<ErrorInfo>()
