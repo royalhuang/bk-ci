@@ -76,7 +76,6 @@ class PipelineBuildDetailService @Autowired constructor(
     private val pipelineRepositoryService: PipelineRepositoryService,
     private val pipelineStageService: PipelineStageService,
     private val pipelineRuntimeService: PipelineRuntimeService,
-    private val buildVariableService: BuildVariableService,
     private val redisOperation: RedisOperation,
     private val webSocketDispatcher: WebSocketDispatcher,
     private val pipelineWebsocketService: PipelineWebsocketService,
@@ -850,21 +849,12 @@ class PipelineBuildDetailService @Autowired constructor(
 
     fun taskStart(buildId: String, taskId: String) {
         logger.info("The task($taskId) start of build $buildId")
-        val variables = buildVariableService.getAllVariable(buildId)
         update(buildId, object : ModelInterface {
             var update = false
             override fun onFindElement(e: Element, c: Container): Traverse {
                 if (e.id == taskId) {
                     if (e is ManualReviewUserTaskElement) {
                         e.status = BuildStatus.REVIEWING.name
-//                        c.status = BuildStatus.REVIEWING.name
-                        // Replace the review user with environment
-                        val list = mutableListOf<String>()
-                        e.reviewUsers.forEach { reviewUser ->
-                            list.addAll(EnvUtils.parseEnv(reviewUser, variables).split(","))
-                        }
-                        e.reviewUsers.clear()
-                        e.reviewUsers.addAll(list)
                     } else if (e is QualityGateInElement || e is QualityGateOutElement) {
                         e.status = BuildStatus.REVIEWING.name
                         c.status = BuildStatus.REVIEWING.name

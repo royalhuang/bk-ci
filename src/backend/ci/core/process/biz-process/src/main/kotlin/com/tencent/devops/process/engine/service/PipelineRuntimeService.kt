@@ -31,6 +31,7 @@ import com.tencent.devops.artifactory.pojo.FileInfo
 import com.tencent.devops.common.api.pojo.ErrorCode
 import com.tencent.devops.common.api.pojo.ErrorInfo
 import com.tencent.devops.common.api.pojo.ErrorType
+import com.tencent.devops.common.api.util.EnvUtils
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.timestampmilli
 import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatcher
@@ -887,6 +888,16 @@ class PipelineRuntimeService @Autowired constructor(
                     }
                     // 全新构建
                     if (lastTimeBuildTaskRecords.isEmpty()) {
+                        if (atomElement is ManualReviewUserTaskElement) {
+                            // Replace the review user with environment
+                            val list = mutableListOf<String>()
+                            atomElement.reviewUsers.forEach { reviewUser ->
+                                list.addAll(EnvUtils.parseEnv(reviewUser, params).split(","))
+                            }
+                            atomElement.reviewUsers.clear()
+                            atomElement.reviewUsers.addAll(list)
+                        }
+
                         taskCount++
                         buildTaskList.add(
                             PipelineBuildTask(
