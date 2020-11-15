@@ -28,11 +28,13 @@ package com.tencent.devops.process.engine.control
 
 import com.tencent.devops.common.api.util.EnvUtils
 import com.tencent.devops.common.pipeline.NameAndValue
+import com.tencent.devops.common.pipeline.enums.BuildExpressionResult
 import com.tencent.devops.common.pipeline.enums.BuildStatus
 import com.tencent.devops.common.pipeline.enums.JobRunCondition
 import com.tencent.devops.common.pipeline.enums.StageRunCondition
 import com.tencent.devops.common.pipeline.pojo.element.ElementAdditionalOptions
 import com.tencent.devops.common.pipeline.pojo.element.RunCondition
+import com.tencent.devops.process.engine.utils.ExpressionUtils
 import com.tencent.devops.process.utils.TASK_FAIL_RETRY_MAX_COUNT
 import com.tencent.devops.process.utils.TASK_FAIL_RETRY_MIN_COUNT
 import org.slf4j.LoggerFactory
@@ -136,8 +138,19 @@ object ControlUtils {
             }
             // 所有自定义条件都满足，则不能跳过
         }
+
+        // 自定义条件表达式满足时运行
+        if (notSkipWhenCustomConditioMatch(additionalOptions)) {
+            val expression = EnvUtils.parseEnv(additionalOptions!!.customCondition, variables)
+            return ExpressionUtils.fetchExpressionResult(expression) == BuildExpressionResult.MATCH
+        }
         return false
     }
+
+    private fun notSkipWhenCustomConditioMatch(additionalOptions: ElementAdditionalOptions?) =
+        additionalOptions != null && additionalOptions.runCondition == RunCondition.CUSTOM_CONDITION_MATCH &&
+            additionalOptions.customCondition != null && additionalOptions.customCondition!!.isNotBlank()
+
 
     private fun notSkipWhenCustomVarMatch(additionalOptions: ElementAdditionalOptions?) =
         additionalOptions != null && additionalOptions.runCondition == RunCondition.CUSTOM_VARIABLE_MATCH &&
