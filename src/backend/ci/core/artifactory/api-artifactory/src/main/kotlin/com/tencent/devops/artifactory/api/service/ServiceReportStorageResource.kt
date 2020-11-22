@@ -48,7 +48,7 @@ interface ServiceReportStorageResource {
     // @Path("/projects/{projectId}/pipelines/{pipelineId}/builds/{buildId}/elements/{elementId}/paths/{path: .*}")
     @Path("/{projectId}/{pipelineId}/{buildId}/{elementId}/{path: .*}")
     @GET
-    fun get(
+    fun getReportContent(
         @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,

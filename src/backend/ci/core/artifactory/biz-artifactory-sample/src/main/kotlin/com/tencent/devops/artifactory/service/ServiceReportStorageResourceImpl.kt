@@ -36,7 +36,7 @@ import org.springframework.web.context.request.ServletRequestAttributes
 @RestResource
 class ServiceReportStorageResourceImpl @Autowired constructor(private val archiveFileService: ArchiveFileService)
     : ServiceReportStorageResource {
-    override fun get(userId: String, projectId: String, pipelineId: String, buildId: String, elementId: String, path: String) {
+    override fun getReportContent(userId: String, projectId: String, pipelineId: String, buildId: String, elementId: String, path: String) {
         val filePath = "${FileTypeEnum.BK_REPORT.fileType}/$projectId/$pipelineId/$buildId/$elementId/$path"
         val response = (RequestContextHolder.getRequestAttributes() as ServletRequestAttributes).response!!
         archiveFileService.downloadFile(filePath, response)
