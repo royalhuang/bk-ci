@@ -44,7 +44,7 @@ import javax.ws.rs.core.MediaType
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface UserReportStorageResource {
-    @ApiOperation("获取有权限目录列表")
+    @ApiOperation("获取构建报告静态资源")
     // @Path("/projects/{projectId}/pipelines/{pipelineId}/builds/{buildId}/elements/{elementId}/paths/{path: .*}")
     @Path("/{projectId}/{pipelineId}/{buildId}/{elementId}/{path: .*}")
     @GET
