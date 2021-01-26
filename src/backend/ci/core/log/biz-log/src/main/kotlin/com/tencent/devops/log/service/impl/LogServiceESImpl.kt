@@ -44,6 +44,7 @@ import com.tencent.devops.common.log.utils.LogMQEventDispatcher
 import com.tencent.devops.common.redis.RedisLock
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.log.client.LogClient
+import com.tencent.devops.log.es.ESClient
 import com.tencent.devops.log.jmx.v2.CreateIndexBeanV2
 import com.tencent.devops.log.jmx.v2.LogBeanV2
 import com.tencent.devops.log.service.IndexService
@@ -53,6 +54,7 @@ import com.tencent.devops.log.service.LogTagService
 import com.tencent.devops.log.util.Constants
 import com.tencent.devops.log.util.ESIndexUtils
 import org.elasticsearch.ElasticsearchStatusException
+import org.elasticsearch.action.admin.indices.alias.Alias
 import org.elasticsearch.action.admin.indices.open.OpenIndexRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.index.IndexRequest
@@ -118,13 +120,19 @@ class LogServiceESImpl constructor(
         val currentEpoch = System.currentTimeMillis()
         var success = false
         try {
-            prepareIndex(event.buildId)
+            val indexAlias = indexService.getIndexAliasName(event.buildId)
+            val bulkClient = logClient.hashClient(event.buildId)
+            val bulkIndex = getBulkIndex(bulkClient, indexAlias)
+
+            // 创建带有统一别名的实际索引
+            prepareIndex(bulkClient, bulkIndex, indexAlias)
+
             val logMessages = event.logs
             val buf = mutableListOf<LogMessageWithLineNo>()
             logMessages.forEach {
                 buf.add(it)
                 if (buf.size == Constants.BULK_BUFFER_SIZE) {
-                    if (doAddMultiLines(buf, event.buildId) == 0) {
+                    if (doAddMultiLines(bulkIndex, bulkClient, buf, event.buildId) == 0) {
                         throw Exception("None of lines is inserted successfully to ES [${event.buildId}|${event.retryTime}]")
                     } else {
                         buf.clear()
@@ -132,7 +140,7 @@ class LogServiceESImpl constructor(
                 }
             }
             if (buf.isNotEmpty()) {
-                if (doAddMultiLines(buf, event.buildId) == 0) {
+                if (doAddMultiLines(bulkIndex, bulkClient, buf, event.buildId) == 0) {
                     throw Exception("None of lines is inserted successfully to ES [${event.buildId}|${event.retryTime}]")
                 }
             }
@@ -169,7 +177,7 @@ class LogServiceESImpl constructor(
         val currentEpoch = System.currentTimeMillis()
         var success = false
         try {
-            val index = indexService.getIndexName(buildId)
+            val index = indexService.getIndexAliasName(buildId)
             val result = doQueryInitLogs(
                 buildId = buildId,
                 index = index,
@@ -199,7 +207,7 @@ class LogServiceESImpl constructor(
         val startEpoch = System.currentTimeMillis()
         var success = false
         try {
-            val index = indexService.getIndexName(buildId)
+            val index = indexService.getIndexAliasName(buildId)
 
             val queryLogs = QueryLogs(
                 buildId, getLogStatus(
@@ -281,7 +289,7 @@ class LogServiceESImpl constructor(
         val startEpoch = System.currentTimeMillis()
         var success = false
         try {
-            val index = indexService.getIndexName(buildId)
+            val index = indexService.getIndexAliasName(buildId)
             val result = doQueryLogsAfterLine(
                 buildId = buildId,
                 index = index,
@@ -310,7 +318,7 @@ class LogServiceESImpl constructor(
         val startEpoch = System.currentTimeMillis()
         var success = false
         try {
-            val index = indexService.getIndexName(buildId)
+            val index = indexService.getIndexAliasName(buildId)
             val result = doQueryLogsBeforeLine(
                 buildId = buildId,
                 index = index,
@@ -339,7 +347,7 @@ class LogServiceESImpl constructor(
         fileName: String?
     ): Response {
 
-        val index = indexService.getIndexName(buildId)
+        val index = indexService.getIndexAliasName(buildId)
         val query = getQuery(
             buildId = buildId,
             tag = tag,
@@ -480,7 +488,7 @@ class LogServiceESImpl constructor(
         )
         var logSize = 0L
         try {
-            val index = indexService.getIndexName(buildId)
+            val index = indexService.getIndexAliasName(buildId)
             queryLogs = queryInitLogsPage(
                 buildId = buildId,
                 tag = tag,
@@ -530,7 +538,7 @@ class LogServiceESImpl constructor(
 
     override fun reopenIndex(buildId: String): Boolean {
         logger.info("Reopen Index - $buildId")
-        val index = indexService.getIndexName(buildId)
+        val index = indexService.getIndexAliasName(buildId)
         return openIndex(buildId, index)
     }
 
@@ -562,7 +570,7 @@ class LogServiceESImpl constructor(
                 executeCount = executeCount
             )
         )
-        val index = indexService.getIndexName(buildId)
+        val index = indexService.getIndexAliasName(buildId)
 
         val boolQuery = QueryBuilders.boolQuery()
         if (page != -1 && pageSize != -1) {
@@ -638,7 +646,7 @@ class LogServiceESImpl constructor(
         )
         val queryLogs = QueryLogs(buildId, logStatus)
         try {
-            val index = indexService.getIndexName(buildId)
+            val index = indexService.getIndexAliasName(buildId)
             val logSize = getLogSize(
                 index = index,
                 buildId = buildId,
@@ -1063,10 +1071,8 @@ class LogServiceESImpl constructor(
         return countResponse.count
     }
 
-    private fun doAddMultiLines(logMessages: List<LogMessageWithLineNo>, buildId: String): Int {
+    private fun doAddMultiLines(bulkIndex: String, bulkClient: ESClient, logMessages: List<LogMessageWithLineNo>, buildId: String): Int {
         val currentEpoch = System.currentTimeMillis()
-        val index = indexService.getIndexName(buildId)
-        val bulkClient = logClient.hashClient(buildId)
         var lines = 0
         var bulkLines = 0
         val bulkRequest = BulkRequest()
@@ -1077,7 +1083,7 @@ class LogServiceESImpl constructor(
             val indexRequest = genIndexRequest(
                 buildId = buildId,
                 logMessage = logMessage,
-                index = index
+                index = bulkIndex
             )
             if (indexRequest != null) {
                 bulkRequest.add(indexRequest)
@@ -1164,18 +1170,17 @@ class LogServiceESImpl constructor(
         }
     }
 
-    private fun prepareIndex(buildId: String): Boolean {
-        val index = indexService.getIndexName(buildId)
-        return if (!checkIndexCreate(buildId, index)) {
-            createIndex(buildId, index)
-            indexCache.put(index, true)
+    private fun prepareIndex(esClient: ESClient, bulkIndex: String, indexAlias: String): Boolean {
+        return if (!checkIndexCreate(esClient, bulkIndex)) {
+            createIndex(esClient, bulkIndex, indexAlias)
+            indexCache.put(bulkIndex, true)
             true
         } else {
             true
         }
     }
 
-    private fun checkIndexCreate(buildId: String, index: String): Boolean {
+    private fun checkIndexCreate(esClient: ESClient, index: String): Boolean {
         if (indexCache.getIfPresent(index) == true) {
             return true
         }
@@ -1187,8 +1192,8 @@ class LogServiceESImpl constructor(
             }
 
             // Check from ES
-            if (isExistIndex(buildId, index)) {
-                logger.info("[$buildId|$index] the index is already created")
+            if (isExistIndex(esClient, index)) {
+                logger.info("[${esClient.clusterName}|$index] the index is already created")
                 indexCache.put(index, true)
                 return true
             }
@@ -1198,14 +1203,14 @@ class LogServiceESImpl constructor(
         }
     }
 
-    private fun createIndex(buildId: String, index: String): Boolean {
-        logger.info("[$index] Create index")
+    private fun createIndex(createClient: ESClient, builkIndex: String, indexAlias: String): Boolean {
+        logger.info("[$builkIndex] Create index")
         var success = false
         val startEpoch = System.currentTimeMillis()
-        val createClient = logClient.hashClient(buildId)
         return try {
-            logger.info("[${createClient.clusterName}][$index] Start to create the index: shards[${createClient.shards}] replicas[${createClient.replicas}] shardsPerNode[${createClient.shardsPerNode}]")
-            val request = CreateIndexRequest(index)
+            logger.info("[${createClient.clusterName}][$builkIndex] Start to create the index: shards[${createClient.shards}] replicas[${createClient.replicas}] shardsPerNode[${createClient.shardsPerNode}]")
+            val request = CreateIndexRequest(builkIndex)
+                .alias(Alias(indexAlias))
                 .settings(ESIndexUtils.getIndexSettings(
                     shards = createClient.shards,
                     replicas = createClient.replicas,
@@ -1218,18 +1223,26 @@ class LogServiceESImpl constructor(
             success = true
             response.isShardsAcknowledged
         } catch (e: IOException) {
-            logger.error("[${createClient.clusterName}] Create index $index failure", e)
+            logger.error("[${createClient.clusterName}] Create index $builkIndex failure", e)
             return false
         } finally {
             createIndexBeanV2.execute(System.currentTimeMillis() - startEpoch, success)
         }
     }
 
-    private fun isExistIndex(buildId: String, index: String): Boolean {
+    private fun isExistIndex(esClient: ESClient, index: String): Boolean {
         val request = GetIndexRequest(index)
         request.setTimeout(TimeValue.timeValueSeconds(30))
-        return logClient.hashClient(buildId).restClient.indices()
+        return esClient.restClient.indices()
             .exists(request, RequestOptions.DEFAULT)
+    }
+
+    private fun getBulkIndex(esClient: ESClient, indexAlias: String): String {
+        return if (esClient.indexSuffix.isNullOrBlank()) {
+            indexAlias
+        } else {
+            "$indexAlias-${esClient.indexSuffix}"
+        }
     }
 
     private fun getQuery(

@@ -97,6 +97,8 @@ class ESAutoConfiguration : DisposableBean {
     private val shardsPerNode: Int? = null
     @Value("\${log.elasticsearch.socketTimeout:#{null}}")
     private val socketTimeout: Int? = null
+    @Value("\${log.elasticsearch.indexAlias:#{null}}")
+    private val indexAliasSuffix: String? = null
 
     private var client: RestHighLevelClient? = null
 
@@ -128,6 +130,7 @@ class ESAutoConfiguration : DisposableBean {
         } else {
             30000
         }
+        val indexSuffix = if (indexAliasSuffix.isNullOrBlank()) null else indexAliasSuffix
 
         var httpHost = HttpHost(ip, httpPort, "http")
         var sslContext: SSLContext? = null
@@ -197,6 +200,7 @@ class ESAutoConfiguration : DisposableBean {
         return ESClient(
             clusterName = name!!,
             restClient = client!!,
+            indexSuffix = indexSuffix,
             shards = indexShards,
             replicas = indexReplicas,
             shardsPerNode = indexShardsPerNode,

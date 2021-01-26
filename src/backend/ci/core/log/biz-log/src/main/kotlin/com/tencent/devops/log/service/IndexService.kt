@@ -95,7 +95,7 @@ class IndexService @Autowired constructor(
         return indexName
     }
 
-    fun getIndexName(buildId: String): String {
+    fun getIndexAliasName(buildId: String): String {
         val index = indexCache.get(buildId)
         if (index.isNullOrBlank()) {
             throw OperationException("Fail to get the index of build $buildId")

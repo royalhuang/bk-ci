@@ -35,6 +35,7 @@ data class ESClient(
     val replicas: Int,
     val shardsPerNode: Int,
     val requestTimeout: Long,
+    val indexSuffix: String? = null,
     val mainCluster: Boolean? = false,
     val writable: Boolean? = true
 )

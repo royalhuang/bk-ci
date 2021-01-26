@@ -220,14 +220,14 @@ class LuceneClient constructor(
     }
 
     private fun prepareSearcher(buildId: String): IndexSearcher {
-        val index = indexService.getIndexName(buildId)
+        val index = indexService.getIndexAliasName(buildId)
         val directory = prepareDirectory(buildId, index)
         val reader: IndexReader = DirectoryReader.open(directory)
         return IndexSearcher(reader)
     }
 
     private fun prepareWriter(buildId: String): IndexWriter {
-        val index = indexService.getIndexName(buildId)
+        val index = indexService.getIndexAliasName(buildId)
         // 同一索引不能同时存在两个IndexWriter，增加索引的互斥锁
         val indexLock = LuceneIndexLock(redisOperation, index, buildId)
         val directory = prepareDirectory(buildId, index)

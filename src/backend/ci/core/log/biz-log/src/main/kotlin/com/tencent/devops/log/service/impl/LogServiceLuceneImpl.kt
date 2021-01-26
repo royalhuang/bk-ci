@@ -134,7 +134,7 @@ class LogServiceLuceneImpl constructor(
         val currentEpoch = System.currentTimeMillis()
         var success = false
         try {
-            val index = indexService.getIndexName(buildId)
+            val index = indexService.getIndexAliasName(buildId)
             val result = doQueryInitLogs(
                 buildId = buildId,
                 index = index,
@@ -208,7 +208,7 @@ class LogServiceLuceneImpl constructor(
         val startEpoch = System.currentTimeMillis()
         var success = false
         try {
-            val index = indexService.getIndexName(buildId)
+            val index = indexService.getIndexAliasName(buildId)
             val result = doQueryLogsAfterLine(
                 buildId = buildId,
                 index = index,
@@ -237,7 +237,7 @@ class LogServiceLuceneImpl constructor(
         val startEpoch = System.currentTimeMillis()
         var success = false
         try {
-            val index = indexService.getIndexName(buildId)
+            val index = indexService.getIndexAliasName(buildId)
             val result = doQueryLogsBeforeLine(
                 buildId = buildId,
                 index = index,
@@ -712,7 +712,7 @@ class LogServiceLuceneImpl constructor(
     }
 
     private fun prepareIndex(buildId: String): Boolean {
-        val index = indexService.getIndexName(buildId)
+        val index = indexService.getIndexAliasName(buildId)
         indexCache.put(index, true)
         return true
     }
