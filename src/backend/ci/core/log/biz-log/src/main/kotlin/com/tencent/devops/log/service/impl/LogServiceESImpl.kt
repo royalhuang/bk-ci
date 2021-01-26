@@ -118,7 +118,7 @@ class LogServiceESImpl constructor(
         try {
             val indexAlias = indexService.getIndexAliasName(event.buildId)
             val bulkClient = logClient.hashClient(event.buildId)
-            val bulkIndex = getBulkIndex(bulkClient, indexAlias)
+            val bulkIndex = ESIndexUtils.getBulkIndex(bulkClient, indexAlias)
 
             // 创建带有统一别名的实际索引
             prepareIndex(bulkClient, bulkIndex, indexAlias)
@@ -1206,14 +1206,6 @@ class LogServiceESImpl constructor(
         request.setTimeout(TimeValue.timeValueSeconds(30))
         return esClient.restClient.indices()
             .exists(request, RequestOptions.DEFAULT)
-    }
-
-    private fun getBulkIndex(esClient: ESClient, indexAlias: String): String {
-        return if (esClient.indexSuffix.isNullOrBlank()) {
-            indexAlias
-        } else {
-            "$indexAlias-${esClient.indexSuffix}"
-        }
     }
 
     private fun getQuery(

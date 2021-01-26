@@ -42,34 +42,6 @@ object ESIndexUtils {
 
     private val logger = LoggerFactory.getLogger(ESIndexUtils::class.java)
 
-    fun getIndexSettings(shards: Int, replicas: Int, shardsPerNode: Int): Settings.Builder {
-        return Settings.builder()
-            .put("index.number_of_shards", shards)
-            .put("index.number_of_replicas", replicas)
-            .put("index.refresh_interval", "3s")
-            .put("index.queries.cache.enabled", false)
-            .put("index.routing.allocation.total_shards_per_node", shardsPerNode)
-    }
-
-    fun getTypeMappings(): XContentBuilder {
-        return XContentFactory.jsonBuilder()
-            .startObject()
-            .startObject("properties")
-            .startObject("buildId").field("type", "keyword").endObject()
-            .startObject("timestamp").field("type", "long").endObject()
-            .startObject("lineNo").field("type", "long").endObject()
-            .startObject("tag").field("type", "keyword").endObject()
-            .startObject("subTag").field("type", "keyword").endObject()
-            .startObject("jobId").field("type", "keyword").endObject()
-            .startObject("executeCount").field("type", "keyword").endObject()
-            .startObject("logType").field("type", "text").endObject()
-            .startObject("message").field("type", "text")
-            .field("analyzer", "standard")
-            .endObject()
-            .endObject()
-            .endObject()
-    }
-
     fun getDocumentObject(
         buildId: String,
         logMessage: LogMessageWithLineNo
@@ -108,5 +80,41 @@ object ESIndexUtils {
             logger.error("[${createClient.clusterName}] Create index $indexName failure", e)
             return false
         }
+    }
+
+    fun getBulkIndex(esClient: ESClient, indexAlias: String): String {
+        return if (esClient.indexSuffix.isNullOrBlank()) {
+            indexAlias
+        } else {
+            "$indexAlias-${esClient.indexSuffix}"
+        }
+    }
+
+    private fun getIndexSettings(shards: Int, replicas: Int, shardsPerNode: Int): Settings.Builder {
+        return Settings.builder()
+            .put("index.number_of_shards", shards)
+            .put("index.number_of_replicas", replicas)
+            .put("index.refresh_interval", "3s")
+            .put("index.queries.cache.enabled", false)
+            .put("index.routing.allocation.total_shards_per_node", shardsPerNode)
+    }
+
+    private fun getTypeMappings(): XContentBuilder {
+        return XContentFactory.jsonBuilder()
+            .startObject()
+            .startObject("properties")
+            .startObject("buildId").field("type", "keyword").endObject()
+            .startObject("timestamp").field("type", "long").endObject()
+            .startObject("lineNo").field("type", "long").endObject()
+            .startObject("tag").field("type", "keyword").endObject()
+            .startObject("subTag").field("type", "keyword").endObject()
+            .startObject("jobId").field("type", "keyword").endObject()
+            .startObject("executeCount").field("type", "keyword").endObject()
+            .startObject("logType").field("type", "text").endObject()
+            .startObject("message").field("type", "text")
+            .field("analyzer", "standard")
+            .endObject()
+            .endObject()
+            .endObject()
     }
 }
