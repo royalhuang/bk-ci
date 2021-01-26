@@ -75,7 +75,7 @@ class IndexDao {
         }
     }
 
-    fun getIndexName(
+    fun getIndexAlias(
         dslContext: DSLContext,
         buildId: String
     ): String? {

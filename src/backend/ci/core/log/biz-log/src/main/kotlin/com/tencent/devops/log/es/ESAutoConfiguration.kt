@@ -97,7 +97,7 @@ class ESAutoConfiguration : DisposableBean {
     private val shardsPerNode: Int? = null
     @Value("\${log.elasticsearch.socketTimeout:#{null}}")
     private val socketTimeout: Int? = null
-    @Value("\${log.elasticsearch.indexAlias:#{null}}")
+    @Value("\${log.elasticsearch.indexSuffix:#{null}}")
     private val indexAliasSuffix: String? = null
 
     private var client: RestHighLevelClient? = null

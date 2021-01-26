@@ -31,12 +31,12 @@ import java.time.format.DateTimeFormatter
 
 object IndexNameUtils {
 
-    fun getIndexName(): String {
+    fun getIndexAlias(): String {
         val formatter = DateTimeFormatter.ofPattern(LOG_INDEX_DATE_FORMAT)
         return LOG_INDEX_PREFIX + formatter.format(LocalDateTime.now())
     }
 
-    fun getNextIndexName(): String {
+    fun getNextIndexAlias(): String {
         val formatter = DateTimeFormatter.ofPattern(LOG_INDEX_DATE_FORMAT)
         return LOG_INDEX_PREFIX + formatter.format(LocalDateTime.now().plusDays(1))
     }

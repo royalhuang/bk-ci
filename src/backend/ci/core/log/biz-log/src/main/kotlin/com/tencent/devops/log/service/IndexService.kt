@@ -56,7 +56,7 @@ class IndexService @Autowired constructor(
         fun getLineNumRedisKey(buildId: String) = LOG_LINE_NUM + buildId
     }
 
-    private val indexCache = CacheBuilder.newBuilder()
+    private val indexAliasCache = CacheBuilder.newBuilder()
         .maximumSize(100000)
         .expireAfterAccess(30, TimeUnit.MINUTES)
         .build<String/*BuildId*/, String/*IndexName*/>(
@@ -64,39 +64,39 @@ class IndexService @Autowired constructor(
                 override fun load(buildId: String): String {
                     return dslContext.transactionResult { configuration ->
                         val context = DSL.using(configuration)
-                        var indexName = indexDao.getIndexName(context, buildId)
-                        if (indexName.isNullOrBlank()) {
+                        var indexAlias = indexDao.getIndexAlias(context, buildId)
+                        if (indexAlias.isNullOrBlank()) {
                             val redisLock = RedisLock(redisOperation, LOG_INDEX_LOCK, 10)
                             redisLock.lock()
                             try {
-                                indexName = indexDao.getIndexName(context, buildId)
-                                if (indexName.isNullOrBlank()) {
+                                indexAlias = indexDao.getIndexAlias(context, buildId)
+                                if (indexAlias.isNullOrBlank()) {
                                     logger.info("[$buildId] Add the build record")
-                                    indexName = saveIndex(buildId)
+                                    indexAlias = saveIndexAlias(buildId)
                                 }
                             } finally {
                                 redisLock.unlock()
                             }
                         }
-                        indexName!!
+                        indexAlias!!
                     }
                 }
             }
         )
 
-    private fun saveIndex(buildId: String): String {
-        val indexName = IndexNameUtils.getIndexName()
+    private fun saveIndexAlias(buildId: String): String {
+        val indexAlias = IndexNameUtils.getIndexAlias()
         dslContext.transaction { configuration ->
             val context = DSL.using(configuration)
-            indexDao.create(context, buildId, indexName, true)
+            indexDao.create(context, buildId, indexAlias, true)
             redisOperation.set(getLineNumRedisKey(buildId), 1.toString(), TimeUnit.DAYS.toSeconds(2))
         }
-        logger.info("[$buildId|$indexName] Create new index/type in db and cache")
-        return indexName
+        logger.info("[$buildId|$indexAlias] Create new index/type in db and cache")
+        return indexAlias
     }
 
     fun getIndexAliasName(buildId: String): String {
-        val index = indexCache.get(buildId)
+        val index = indexAliasCache.get(buildId)
         if (index.isNullOrBlank()) {
             throw OperationException("Fail to get the index of build $buildId")
         }
