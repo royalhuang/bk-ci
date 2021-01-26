@@ -39,7 +39,7 @@ class IndexDao {
     fun create(
         dslContext: DSLContext,
         buildId: String,
-        indexName: String,
+        indexAlias: String,
         enable: Boolean
     ) {
         with(TLogIndicesV2.T_LOG_INDICES_V2) {
@@ -55,7 +55,7 @@ class IndexDao {
                 )
                 .values(
                     buildId,
-                    indexName,
+                    indexAlias,
                     1,
                     now,
                     now,

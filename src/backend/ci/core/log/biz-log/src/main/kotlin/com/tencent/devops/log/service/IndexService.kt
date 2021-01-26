@@ -88,7 +88,12 @@ class IndexService @Autowired constructor(
         val indexAlias = IndexNameUtils.getIndexAlias()
         dslContext.transaction { configuration ->
             val context = DSL.using(configuration)
-            indexDao.create(context, buildId, indexAlias, true)
+            indexDao.create(
+                dslContext = context,
+                buildId = buildId,
+                indexAlias = indexAlias,
+                enable = true
+            )
             redisOperation.set(getLineNumRedisKey(buildId), 1.toString(), TimeUnit.DAYS.toSeconds(2))
         }
         logger.info("[$buildId|$indexAlias] Create new index/type in db and cache")
