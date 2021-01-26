@@ -27,11 +27,20 @@
 package com.tencent.devops.log.util
 
 import com.tencent.devops.common.log.pojo.message.LogMessageWithLineNo
+import com.tencent.devops.log.es.ESClient
+import org.elasticsearch.action.admin.indices.alias.Alias
+import org.elasticsearch.client.RequestOptions
+import org.elasticsearch.client.indices.CreateIndexRequest
 import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.common.xcontent.XContentFactory
+import org.slf4j.LoggerFactory
+import java.io.IOException
 
 object ESIndexUtils {
+
+    private val logger = LoggerFactory.getLogger(ESIndexUtils::class.java)
 
     fun getIndexSettings(shards: Int, replicas: Int, shardsPerNode: Int): Settings.Builder {
         return Settings.builder()
@@ -77,5 +86,27 @@ object ESIndexUtils {
             .field("logType", logMessage.logType.name)
             .field("executeCount", logMessage.executeCount)
             .endObject()
+    }
+
+    fun createIndex(createClient: ESClient, indexName: String, indexAlias: String): Boolean {
+        logger.info("[$indexName] Create index")
+        return try {
+            logger.info("[${createClient.clusterName}][$indexName] Start to create the index: shards[${createClient.shards}] replicas[${createClient.replicas}] shardsPerNode[${createClient.shardsPerNode}]")
+            val request = CreateIndexRequest(indexName)
+                .alias(Alias(indexAlias))
+                .settings(getIndexSettings(
+                    shards = createClient.shards,
+                    replicas = createClient.replicas,
+                    shardsPerNode = createClient.shardsPerNode
+                ))
+                .mapping(getTypeMappings())
+            request.setTimeout(TimeValue.timeValueSeconds(30))
+            val response = createClient.restClient.indices()
+                .create(request, RequestOptions.DEFAULT)
+            response.isShardsAcknowledged
+        } catch (e: IOException) {
+            logger.error("[${createClient.clusterName}] Create index $indexName failure", e)
+            return false
+        }
     }
 }

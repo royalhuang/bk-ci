@@ -45,7 +45,6 @@ import com.tencent.devops.common.redis.RedisLock
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.log.client.LogClient
 import com.tencent.devops.log.es.ESClient
-import com.tencent.devops.log.jmx.v2.CreateIndexBeanV2
 import com.tencent.devops.log.jmx.v2.LogBeanV2
 import com.tencent.devops.log.service.IndexService
 import com.tencent.devops.log.service.LogService
@@ -54,7 +53,6 @@ import com.tencent.devops.log.service.LogTagService
 import com.tencent.devops.log.util.Constants
 import com.tencent.devops.log.util.ESIndexUtils
 import org.elasticsearch.ElasticsearchStatusException
-import org.elasticsearch.action.admin.indices.alias.Alias
 import org.elasticsearch.action.admin.indices.open.OpenIndexRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.index.IndexRequest
@@ -63,7 +61,6 @@ import org.elasticsearch.action.search.SearchScrollRequest
 import org.elasticsearch.client.HttpAsyncResponseConsumerFactory.HeapBufferedResponseConsumerFactory
 import org.elasticsearch.client.RequestOptions
 import org.elasticsearch.client.core.CountRequest
-import org.elasticsearch.client.indices.CreateIndexRequest
 import org.elasticsearch.client.indices.GetIndexRequest
 import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.index.query.BoolQueryBuilder
@@ -87,7 +84,6 @@ class LogServiceESImpl constructor(
     private val indexService: IndexService,
     private val logStatusService: LogStatusService,
     private val logTagService: LogTagService,
-    private val createIndexBeanV2: CreateIndexBeanV2,
     private val logBeanV2: LogBeanV2,
     private val redisOperation: RedisOperation,
     private val logMQEventDispatcher: LogMQEventDispatcher
@@ -1170,10 +1166,10 @@ class LogServiceESImpl constructor(
         }
     }
 
-    private fun prepareIndex(esClient: ESClient, bulkIndex: String, indexAlias: String): Boolean {
-        return if (!checkIndexCreate(esClient, bulkIndex)) {
-            createIndex(esClient, bulkIndex, indexAlias)
-            indexCache.put(bulkIndex, true)
+    private fun prepareIndex(esClient: ESClient, indexName: String, indexAlias: String): Boolean {
+        return if (!checkIndexCreate(esClient, indexName)) {
+            ESIndexUtils.createIndex(esClient, indexName, indexAlias)
+            indexCache.put(indexName, true)
             true
         } else {
             true
@@ -1203,32 +1199,7 @@ class LogServiceESImpl constructor(
         }
     }
 
-    private fun createIndex(createClient: ESClient, builkIndex: String, indexAlias: String): Boolean {
-        logger.info("[$builkIndex] Create index")
-        var success = false
-        val startEpoch = System.currentTimeMillis()
-        return try {
-            logger.info("[${createClient.clusterName}][$builkIndex] Start to create the index: shards[${createClient.shards}] replicas[${createClient.replicas}] shardsPerNode[${createClient.shardsPerNode}]")
-            val request = CreateIndexRequest(builkIndex)
-                .alias(Alias(indexAlias))
-                .settings(ESIndexUtils.getIndexSettings(
-                    shards = createClient.shards,
-                    replicas = createClient.replicas,
-                    shardsPerNode = createClient.shardsPerNode
-                ))
-                .mapping(ESIndexUtils.getTypeMappings())
-            request.setTimeout(TimeValue.timeValueSeconds(30))
-            val response = createClient.restClient.indices()
-                .create(request, RequestOptions.DEFAULT)
-            success = true
-            response.isShardsAcknowledged
-        } catch (e: IOException) {
-            logger.error("[${createClient.clusterName}] Create index $builkIndex failure", e)
-            return false
-        } finally {
-            createIndexBeanV2.execute(System.currentTimeMillis() - startEpoch, success)
-        }
-    }
+
 
     private fun isExistIndex(esClient: ESClient, index: String): Boolean {
         val request = GetIndexRequest(index)

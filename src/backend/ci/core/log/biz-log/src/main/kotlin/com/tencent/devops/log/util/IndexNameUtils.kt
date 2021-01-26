@@ -31,6 +31,9 @@ import java.time.format.DateTimeFormatter
 
 object IndexNameUtils {
 
+    const val LOG_INDEX_PREFIX = "log-"
+    private const val LOG_INDEX_DATE_FORMAT = "yyyy-MM-dd"
+
     fun getIndexAlias(): String {
         val formatter = DateTimeFormatter.ofPattern(LOG_INDEX_DATE_FORMAT)
         return LOG_INDEX_PREFIX + formatter.format(LocalDateTime.now())
@@ -41,6 +44,4 @@ object IndexNameUtils {
         return LOG_INDEX_PREFIX + formatter.format(LocalDateTime.now().plusDays(1))
     }
 
-    const val LOG_INDEX_PREFIX = "log-"
-    private const val LOG_INDEX_DATE_FORMAT = "yyyy-MM-dd"
 }
