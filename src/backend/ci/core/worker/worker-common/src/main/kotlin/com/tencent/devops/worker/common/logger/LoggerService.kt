@@ -211,25 +211,25 @@ object LoggerService {
         addLog(logMessage)
     }
 
-    fun addRangeStartLine(rangeName: String) {
+    fun addDebugLine(message: String) {
         val logMessage = LogMessage(
-            message = "[START] $rangeName",
+            message = message,
             timestamp = System.currentTimeMillis(),
             tag = elementId,
             jobId = jobId,
-            logType = LogType.START,
+            logType = LogType.DEBUG,
             executeCount = executeCount
         )
         addLog(logMessage)
     }
 
-    fun addRangeEndLine(rangeName: String) {
+    fun addErrorLine(message: String) {
         val logMessage = LogMessage(
-            message = "[END] $rangeName",
+            message = message,
             timestamp = System.currentTimeMillis(),
             tag = elementId,
             jobId = jobId,
-            logType = LogType.END,
+            logType = LogType.ERROR,
             executeCount = executeCount
         )
         addLog(logMessage)
