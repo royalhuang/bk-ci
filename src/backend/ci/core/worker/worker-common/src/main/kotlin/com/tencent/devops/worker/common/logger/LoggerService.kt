@@ -29,6 +29,8 @@ package com.tencent.devops.worker.common.logger
 import com.tencent.devops.common.log.Ansi
 import com.tencent.devops.common.log.pojo.message.LogMessage
 import com.tencent.devops.common.log.pojo.enums.LogType
+import com.tencent.devops.worker.common.LOG_DEBUG_FLAG
+import com.tencent.devops.worker.common.LOG_ERROR_FLAG
 import com.tencent.devops.worker.common.LOG_SUBTAG_FINISH_FLAG
 import com.tencent.devops.worker.common.LOG_SUBTAG_FLAG
 import com.tencent.devops.worker.common.api.ApiFactory
@@ -164,20 +166,25 @@ object LoggerService {
             }
         }
 
+        val logType = when {
+            realMessage.startsWith(LOG_DEBUG_FLAG) -> LogType.DEBUG
+            realMessage.startsWith(LOG_ERROR_FLAG) -> LogType.ERROR
+            else -> LogType.LOG
+        }
         val logMessage = LogMessage(
             message = realMessage,
             timestamp = System.currentTimeMillis(),
             tag = elementId,
             subTag = subTag,
             jobId = jobId,
-            logType = LogType.LOG,
+            logType = logType,
             executeCount = executeCount
         )
         logger.info(logMessage.toString())
         try {
             this.queue.put(logMessage)
         } catch (e: InterruptedException) {
-            logger.error("写入普通日志行失败：", e)
+            logger.error("写入 $logType 日志行失败：", e)
         }
     }
 
@@ -206,30 +213,6 @@ object LoggerService {
             tag = elementId,
             jobId = jobId,
             logType = LogType.LOG,
-            executeCount = executeCount
-        )
-        addLog(logMessage)
-    }
-
-    fun addDebugLine(message: String) {
-        val logMessage = LogMessage(
-            message = message,
-            timestamp = System.currentTimeMillis(),
-            tag = elementId,
-            jobId = jobId,
-            logType = LogType.DEBUG,
-            executeCount = executeCount
-        )
-        addLog(logMessage)
-    }
-
-    fun addErrorLine(message: String) {
-        val logMessage = LogMessage(
-            message = message,
-            timestamp = System.currentTimeMillis(),
-            tag = elementId,
-            jobId = jobId,
-            logType = LogType.ERROR,
             executeCount = executeCount
         )
         addLog(logMessage)
