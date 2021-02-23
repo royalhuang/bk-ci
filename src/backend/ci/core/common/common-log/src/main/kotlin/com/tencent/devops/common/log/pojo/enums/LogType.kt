@@ -31,6 +31,8 @@ import io.swagger.annotations.ApiModelProperty
 
 @ApiModel("日志类型")
 enum class LogType {
+    @ApiModelProperty("提醒日志")
+    WARN,
     @ApiModelProperty("错误日志")
     ERROR,
     @ApiModelProperty("调试日志")

@@ -41,12 +41,9 @@ interface ApigwLogResourceV3 {
         @ApiParam("构建ID", required = true)
         @PathParam("buildId")
         buildId: String,
-        @ApiParam("是否请求分析日志", required = false)
-        @QueryParam("isAnalysis")
-        isAnalysis: Boolean? = false,
-        @ApiParam("搜索关键字", required = false)
-        @QueryParam("queryKeywords")
-        queryKeywords: String?,
+        @ApiParam("是否包含调试日志", required = false)
+        @QueryParam("debug")
+        debug: Boolean? = false,
         @ApiParam("对应elementId", required = false)
         @QueryParam("tag")
         elementId: String?,
@@ -77,6 +74,9 @@ interface ApigwLogResourceV3 {
         @ApiParam("构建ID", required = true)
         @PathParam("buildId")
         buildId: String,
+        @ApiParam("是否包含调试日志", required = false)
+        @QueryParam("debug")
+        debug: Boolean? = false,
         @ApiParam("日志行数", required = false)
         @QueryParam("num")
         num: Int? = 100,
@@ -122,12 +122,9 @@ interface ApigwLogResourceV3 {
         @ApiParam("起始行号", required = true)
         @QueryParam("start")
         start: Long,
-        @ApiParam("是否请求分析日志", required = false)
-        @QueryParam("isAnalysis")
-        isAnalysis: Boolean? = false,
-        @ApiParam("搜索关键字", required = false)
-        @QueryParam("queryKeywords")
-        queryKeywords: String?,
+        @ApiParam("是否包含调试日志", required = false)
+        @QueryParam("debug")
+        debug: Boolean? = false,
         @ApiParam("对应elementId", required = false)
         @QueryParam("tag")
         tag: String?,

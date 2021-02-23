@@ -124,8 +124,7 @@ class LogServiceLuceneImpl constructor(
 
     override fun queryInitLogs(
         buildId: String,
-        isAnalysis: Boolean,
-        keywordsStr: String?,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -341,8 +340,7 @@ class LogServiceLuceneImpl constructor(
 
     override fun queryInitLogsPage(
         buildId: String,
-        isAnalysis: Boolean,
-        keywordsStr: String?,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,

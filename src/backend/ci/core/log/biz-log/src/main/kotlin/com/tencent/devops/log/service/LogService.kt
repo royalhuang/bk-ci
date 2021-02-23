@@ -52,8 +52,7 @@ interface LogService {
 
     fun queryInitLogs(
         buildId: String,
-        isAnalysis: Boolean,
-        keywordsStr: String?,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -123,8 +122,7 @@ interface LogService {
 
     fun queryInitLogsPage(
         buildId: String,
-        isAnalysis: Boolean,
-        keywordsStr: String?,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,

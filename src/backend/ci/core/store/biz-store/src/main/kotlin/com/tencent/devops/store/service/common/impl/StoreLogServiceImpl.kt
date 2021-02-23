@@ -59,13 +59,12 @@ class StoreLogServiceImpl @Autowired constructor(
         projectCode: String,
         pipelineId: String,
         buildId: String,
-        isAnalysis: Boolean?,
-        queryKeywords: String?,
+        debug: Boolean?,
         tag: String?,
         executeCount: Int?
     ): Result<QueryLogs?> {
         logger.info("getInitLogs userId is:$userId,storeType is:$storeType,projectCode is:$projectCode,pipelineId is:$pipelineId,buildId is:$buildId")
-        logger.info("getInitLogs isAnalysis is:$isAnalysis,queryKeywords is:$queryKeywords,tag is:$tag,executeCount is:$executeCount")
+        logger.info("getInitLogs debug is:$debug,tag is:$tag,executeCount is:$executeCount")
         val validateResult = validateUserQueryPermission(storeType, pipelineId, userId)
         logger.info("getInitLogs validateResult is:$validateResult")
         if (validateResult.isNotOk()) {
@@ -76,8 +75,7 @@ class StoreLogServiceImpl @Autowired constructor(
                 projectId = projectCode,
                 pipelineId = pipelineId,
                 buildId = buildId,
-                isAnalysis = isAnalysis,
-                queryKeywords = queryKeywords,
+                debug = debug,
                 tag = tag,
                 jobId = null,
                 executeCount = executeCount
@@ -95,13 +93,12 @@ class StoreLogServiceImpl @Autowired constructor(
         pipelineId: String,
         buildId: String,
         start: Long,
-        isAnalysis: Boolean?,
-        queryKeywords: String?,
+        debug: Boolean?,
         tag: String?,
         executeCount: Int?
     ): Result<QueryLogs?> {
         logger.info("getAfterLogs userId is:$userId,storeType is:$storeType,projectCode is:$projectCode,pipelineId is:$pipelineId,buildId is:$buildId")
-        logger.info("getAfterLogs start is:$start,isAnalysis is:$isAnalysis,queryKeywords is:$queryKeywords,tag is:$tag,executeCount is:$executeCount")
+        logger.info("getAfterLogs start is:$start,debug is:$debug,tag is:$tag,executeCount is:$executeCount")
         val validateResult = validateUserQueryPermission(storeType, pipelineId, userId)
         logger.info("getAfterLogs validateResult is:$validateResult")
         if (validateResult.isNotOk()) {
@@ -113,8 +110,7 @@ class StoreLogServiceImpl @Autowired constructor(
                 pipelineId = pipelineId,
                 buildId = buildId,
                 start = start,
-                isAnalysis = isAnalysis,
-                queryKeywords = queryKeywords,
+                debug = debug,
                 tag = tag,
                     jobId = null,
                     executeCount = executeCount
@@ -131,6 +127,7 @@ class StoreLogServiceImpl @Autowired constructor(
         projectCode: String,
         pipelineId: String,
         buildId: String,
+        debug: Boolean?,
         num: Int?,
         fromStart: Boolean?,
         start: Long,
@@ -138,7 +135,7 @@ class StoreLogServiceImpl @Autowired constructor(
         tag: String?,
         executeCount: Int?
     ): Result<QueryLogs?> {
-        logger.info("getMoreLogs userId is:$userId,storeType is:$storeType,projectCode is:$projectCode,pipelineId is:$pipelineId,buildId is:$buildId")
+        logger.info("getMoreLogs userId is:$userId,storeType is:$storeType,projectCode is:$projectCode,pipelineId is:$pipelineId,buildId is:$buildId, debug:$debug")
         logger.info("getMoreLogs num is:$num,fromStart is:$fromStart,start is:$start,end is:$end,tag is:$tag,executeCount is:$executeCount")
         val validateResult = validateUserQueryPermission(storeType, pipelineId, userId)
         logger.info("getMoreLogs validateResult is:$validateResult")
@@ -150,6 +147,7 @@ class StoreLogServiceImpl @Autowired constructor(
                 projectId = projectCode,
                 pipelineId = pipelineId,
                 buildId = buildId,
+                debug = debug,
                 num = num,
                 fromStart = fromStart,
                 start = start,
