@@ -65,7 +65,7 @@ interface LogService {
         fromStart: Boolean,
         start: Long,
         end: Long,
-        debug: Boolean?,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -75,7 +75,7 @@ interface LogService {
     fun queryLogsAfterLine(
         buildId: String,
         start: Long,
-        debug: Boolean?,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -85,8 +85,8 @@ interface LogService {
     fun queryLogsBeforeLine(
         buildId: String,
         end: Long,
+        debug: Boolean,
         size: Int?,
-        debug: Boolean?,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -106,7 +106,7 @@ interface LogService {
     fun getEndLogsPage(
         pipelineId: String,
         buildId: String,
-        debug: Boolean?,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -117,7 +117,7 @@ interface LogService {
     fun getBottomLogs(
         pipelineId: String,
         buildId: String,
-        debug: Boolean?,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,

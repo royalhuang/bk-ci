@@ -109,6 +109,7 @@ class LogServiceDispatcher @Autowired constructor(
                 fromStart = fromStart ?: true,
                 start = start,
                 end = end,
+                debug = debug ?: false,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -132,6 +133,7 @@ class LogServiceDispatcher @Autowired constructor(
             logService.queryLogsAfterLine(
                 buildId = buildId,
                 start = start,
+                debug = debug ?: false,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -157,6 +159,7 @@ class LogServiceDispatcher @Autowired constructor(
                 buildId = buildId,
                 end = end,
                 size = size,
+                debug = debug ?: false,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -201,6 +204,7 @@ class LogServiceDispatcher @Autowired constructor(
         return Result(logService.getEndLogsPage(
             pipelineId = pipelineId,
             buildId = buildId,
+            debug = debug ?: false,
             tag = tag,
             subTag = subTag,
             jobId = jobId,
@@ -224,6 +228,7 @@ class LogServiceDispatcher @Autowired constructor(
         return Result(logService.getBottomLogs(
             pipelineId = pipelineId,
             buildId = buildId,
+            debug = debug ?: false,
             tag = tag,
             subTag = subTag,
             jobId = jobId,

@@ -1,0 +1,153 @@
+stages:
+  - stage:
+      - job:
+          resourceType: REMOTE
+          pool:
+            type: DockerOnVm
+            container: mirrors.tencent.com/ci/tlinux_ci:0.2.0.4
+            env:
+              jdk: 1.8.0_161
+              gradle: 4.8
+          steps:
+            - taskType: 'syncLocalCode@latest'
+              displayName: 同步SQL代码到构建机
+              inputs:
+                workspace: /Users/johuang/Workspace/bkdevops/bk-ci/support-files/sql/tencent/
+            - taskType: marketBuild@latest
+              displayName: 创建数据库
+              inputs:
+                atomCode: mysqlservice
+                name: 创建数据库
+                version: 1.*
+                data:
+                  input:
+                    imageName: mysql:5.7
+                    port: 3306
+                    mysqlPw: 123456
+                    initCmd: |
+                      CREATE DATABASE IF NOT EXISTS `devops_artifactory` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_auth` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_dispatch` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_dispatch_codecc` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_dispatch_devcloud` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_dispatch_gitci` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_dispatch_idc` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_dispatch_macos` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_environment` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_experience` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_image` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_lambda` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_log` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_monitoring` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_notify` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_openapi` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_plugin` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_process` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_project` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_quality` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_repository` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_sign` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_store` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_support` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_ticket` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_code` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_gitci` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_measure` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_op` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_prebuild` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_turbo` DEFAULT CHARACTER SET utf8mb4;
+                      CREATE DATABASE IF NOT EXISTS `devops_wetest` DEFAULT CHARACTER SET utf8mb4;
+            - taskType: 'bash@latest'
+              displayName: 创建表结构
+              inputs:
+                scriptType: SHELL
+                content: |
+                  #!/bin/bash
+
+                  # cd src/tencent/
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -e "show variables like 'sql_mode'";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -e "set GLOBAL sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -e "show variables like 'sql_mode'";
+
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_artifactory < "1001_devops_artifactory_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_auth < "1001_devops_auth_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_dispatch < "1001_devops_dispatch_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_dispatch_codecc < "1001_devops_dispatch_codecc_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_dispatch_devcloud < "1001_devops_dispatch_devcloud_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_dispatch_gitci < "1001_devops_dispatch_gitci_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_dispatch_idc < "1001_devops_dispatch_idc_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_dispatch_macos < "1001_devops_dispatch_macos_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_environment < "1001_devops_environment_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_experience < "1001_devops_experience_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_image < "1001_devops_image_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_lambda < "1001_devops_lambda_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_log < "1001_devops_log_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_monitoring < "1001_devops_monitoring_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_notify < "1001_devops_notify_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_openapi < "1001_devops_openapi_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_plugin < "1001_devops_plugin_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_process < "1001_devops_process_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_project < "1001_devops_project_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_quality < "1001_devops_quality_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_repository < "1001_devops_repository_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_sign < "1001_devops_sign_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_store < "1001_devops_store_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_support < "1001_devops_support_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_ticket < "1001_devops_ticket_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_code < "1001_devops_code_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_gitci < "1001_devops_gitci_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_measure < "1001_devops_measure_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_op < "1001_devops_op_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_prebuild < "1001_devops_prebuild_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_turbo < "1001_devops_turbo_ddl_mysql.sql";
+                  mysql -h ${MYSQL_IP} -P ${MYSQL_PORT} -uroot -p123456 -Ddevops_wetest < "1001_devops_wetest_ddl_mysql.sql";
+            - taskType: 'bash@latest'
+              displayName: 清理工作空间
+              inputs:
+                scriptType: SHELL
+                content: |
+                  #!/bin/bash
+                  cd ${WORKSPACE}
+                  rm -rf *
+            - taskType: 'syncLocalCode@latest'
+              displayName: 同步当前代码
+            - taskType: 'codeCCScan@latest'
+              displayName: CodeCC扫描
+              inputs:
+                languages:
+                  - JAVA
+                  - KOTLIN
+                tools:
+                  - CHECKSTYLE
+                  - KTLINT
+                  - SENSITIVE
+                  - DUPC
+                  - WOODPECKER_SENSITIVE
+                  - DETEKT
+                  - CLOC
+                  - CHECKSTYLE
+                  - CCN
+                languageRuleSetMap:
+                  JAVA_RULE:
+                    - codecc_fast_java
+                  KOTLIN_RULE:
+                    - KTLint
+                    - codecc_default_kotlin
+            - taskType: bash@latest
+              displayName: 代码编译和单元测试
+              inputs:
+                scriptType: SHELL
+                content: |
+                  #!/bin/bash
+                  gradle clean -Dorg.gradle.daemon=false -DmysqlURL=${MYSQL_IP}:${MYSQL_PORT} -DmysqlUser=root -DmysqlPasswd=123456 classes copyToRelease
+            - taskType: marketBuild@latest
+              displayName: 归档构件
+              inputs:
+                atomCode: UploadArtifactory
+                name: 归档构件
+                version: 1.*
+                data:
+                  input:
+                    filePath: "release/boot-dispatch.jar"
+                    isCustomize: false
+                    destPath: "./"

@@ -137,6 +137,7 @@ class LogServiceLuceneImpl constructor(
             val result = doQueryInitLogs(
                 buildId = buildId,
                 index = index,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -155,6 +156,7 @@ class LogServiceLuceneImpl constructor(
         fromStart: Boolean,
         start: Long,
         end: Long,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -174,6 +176,7 @@ class LogServiceLuceneImpl constructor(
             try {
                 val logs = luceneClient.fetchLogs(
                     buildId = buildId,
+                    debug = debug,
                     tag = tag,
                     subTag = subTag,
                     jobId = jobId,
@@ -199,6 +202,7 @@ class LogServiceLuceneImpl constructor(
     override fun queryLogsAfterLine(
         buildId: String,
         start: Long,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -212,6 +216,7 @@ class LogServiceLuceneImpl constructor(
                 buildId = buildId,
                 index = index,
                 start = start,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -227,6 +232,7 @@ class LogServiceLuceneImpl constructor(
     override fun queryLogsBeforeLine(
         buildId: String,
         end: Long,
+        debug: Boolean,
         size: Int?,
         tag: String?,
         subTag: String?,
@@ -241,6 +247,7 @@ class LogServiceLuceneImpl constructor(
                 buildId = buildId,
                 index = index,
                 before = end,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -265,6 +272,7 @@ class LogServiceLuceneImpl constructor(
     ): Response {
         val fileStream = luceneClient.fetchDocumentsStreaming(
             buildId = buildId,
+            debug = false,
             tag = tag,
             subTag = subTag,
             jobId = jobId,
@@ -281,6 +289,7 @@ class LogServiceLuceneImpl constructor(
     override fun getEndLogsPage(
         pipelineId: String,
         buildId: String,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -293,6 +302,7 @@ class LogServiceLuceneImpl constructor(
         try {
             val result = doGetEndLogs(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -313,13 +323,23 @@ class LogServiceLuceneImpl constructor(
         return queryLogs
     }
 
-    override fun getBottomLogs(pipelineId: String, buildId: String, tag: String?, subTag: String?, jobId: String?, executeCount: Int?, size: Int?): QueryLogs {
+    override fun getBottomLogs(
+        pipelineId: String,
+        buildId: String,
+        debug: Boolean,
+        tag: String?,
+        subTag: String?,
+        jobId: String?,
+        executeCount: Int?,
+        size: Int?
+    ): QueryLogs {
         val startEpoch = System.currentTimeMillis()
         val queryLogs = QueryLogs(buildId, true)
         var success = false
         try {
             val result = doGetEndLogs(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -351,8 +371,9 @@ class LogServiceLuceneImpl constructor(
         val startEpoch = System.currentTimeMillis()
         var success = false
         try {
-            val pageResult = queryInitLogsPage(
+            val pageResult = doQueryInitLogsPage(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -362,6 +383,7 @@ class LogServiceLuceneImpl constructor(
             )
             val logSize = luceneClient.fetchLogsCount(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -394,8 +416,9 @@ class LogServiceLuceneImpl constructor(
 
     private fun logStatusSuccess(logStatus: LogStatus) = (logStatus == LogStatus.EMPTY || logStatus == LogStatus.SUCCEED)
 
-    private fun queryInitLogsPage(
+    private fun doQueryInitLogsPage(
         buildId: String,
+        debug: Boolean,
         tag: String? = null,
         subTag: String? = null,
         jobId: String? = null,
@@ -414,6 +437,7 @@ class LogServiceLuceneImpl constructor(
         try {
             val logs = luceneClient.fetchAllLogsInPage(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -433,6 +457,7 @@ class LogServiceLuceneImpl constructor(
 
     private fun doGetEndLogs(
         buildId: String,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -456,6 +481,7 @@ class LogServiceLuceneImpl constructor(
         val queryLogs = QueryLogs(buildId, logStatus)
         val logSize = luceneClient.fetchLogsCount(
             buildId = buildId,
+            debug = debug,
             tag = tag,
             subTag = subTag,
             jobId = jobId,
@@ -463,6 +489,7 @@ class LogServiceLuceneImpl constructor(
         )
         val logs = luceneClient.fetchLogs(
             buildId = buildId,
+            debug = debug,
             tag = tag,
             subTag = subTag,
             jobId = jobId,
@@ -477,6 +504,7 @@ class LogServiceLuceneImpl constructor(
     private fun doQueryInitLogs(
         buildId: String,
         index: String,
+        debug: Boolean,
         tag: String? = null,
         subTag: String? = null,
         jobId: String? = null,
@@ -504,6 +532,7 @@ class LogServiceLuceneImpl constructor(
         try {
             val size = luceneClient.fetchLogsCount(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -511,6 +540,7 @@ class LogServiceLuceneImpl constructor(
             )
             val logs = luceneClient.fetchInitLogs(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -533,6 +563,7 @@ class LogServiceLuceneImpl constructor(
         buildId: String,
         index: String,
         start: Long,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -564,6 +595,7 @@ class LogServiceLuceneImpl constructor(
             val startTime = System.currentTimeMillis()
             val logs = luceneClient.fetchLogs(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -589,6 +621,7 @@ class LogServiceLuceneImpl constructor(
         index: String,
         before: Long,
         size: Int,
+        debug: Boolean,
         tag: String?,
         subTag: String?,
         jobId: String?,
@@ -620,6 +653,7 @@ class LogServiceLuceneImpl constructor(
             val startTime = System.currentTimeMillis()
             val logSize = luceneClient.fetchLogsCount(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
@@ -627,6 +661,7 @@ class LogServiceLuceneImpl constructor(
             )
             val logs = luceneClient.fetchLogs(
                 buildId = buildId,
+                debug = debug,
                 tag = tag,
                 subTag = subTag,
                 jobId = jobId,
