@@ -63,7 +63,7 @@ class PipelineCallBackConfiguration {
         @Autowired streamEnabledListener: MQPipelineStreamEnabledListener
     ) = ScsConsumerBuilder.build<PipelineStreamEnabledEvent> { streamEnabledListener.run(it) }
 
-    @Bean
+    @Bean("callbackCircuitBreaker")
     fun callbackCircuitBreakerRegistry(
         callbackCircuitBreakerProperties: CallbackCircuitBreakerProperties
     ): CircuitBreakerRegistry {
@@ -81,4 +81,6 @@ class PipelineCallBackConfiguration {
         }
         return CircuitBreakerRegistry.of(builder.build())
     }
+
+
 }

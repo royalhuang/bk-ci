@@ -28,11 +28,13 @@
 package com.tencent.devops.log.configuration
 
 import com.tencent.devops.common.client.Client
+import com.tencent.devops.common.log.pojo.LogPrinterCircuitBreakerProperties
 import com.tencent.devops.common.log.utils.BuildLogPrinter
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import org.springframework.boot.autoconfigure.AutoConfigureOrder
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.Ordered
@@ -41,6 +43,7 @@ import java.time.Duration
 @Configuration
 @ConditionalOnWebApplication
 @AutoConfigureOrder(Ordered.LOWEST_PRECEDENCE)
+@EnableConfigurationProperties(LogPrinterCircuitBreakerProperties::class)
 class LogPrinterConfiguration {
 
     @Bean
@@ -61,5 +64,24 @@ class LogPrinterConfiguration {
         // 滑动窗口大小为 100，默认值
         builder.slidingWindowSize(100)
         return BuildLogPrinter(client, CircuitBreakerRegistry.of(builder.build()))
+    }
+
+    @Bean("logCircuitBreaker")
+    fun logCircuitBreakerRegistry(
+        logCircuitBreakerProperties: LogPrinterCircuitBreakerProperties
+    ): CircuitBreakerRegistry {
+        val builder = CircuitBreakerConfig.custom()
+        builder.enableAutomaticTransitionFromOpenToHalfOpen()
+        builder.writableStackTraceEnabled(false)
+        with(logCircuitBreakerProperties) {
+            failureRateThreshold?.let { builder.failureRateThreshold(it) }
+            slowCallRateThreshold?.let { builder.slowCallRateThreshold(it) }
+            slowCallDurationThreshold?.let { builder.slowCallDurationThreshold(java.time.Duration.ofSeconds(it)) }
+            waitDurationInOpenState?.let { builder.waitDurationInOpenState(java.time.Duration.ofSeconds(it)) }
+            permittedNumberOfCallsInHalfOpenState?.let { builder.permittedNumberOfCallsInHalfOpenState(it) }
+            slidingWindow?.let { builder.slidingWindowSize(it) }
+            minimumNumberOfCalls?.let { builder.minimumNumberOfCalls(it) }
+        }
+        return CircuitBreakerRegistry.of(builder.build())
     }
 }

@@ -75,6 +75,7 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.net.URL
@@ -98,6 +99,7 @@ class CallBackControl @Autowired constructor(
     private val pipelineRepositoryService: PipelineRepositoryService,
     private val projectPipelineCallBackService: ProjectPipelineCallBackService,
     private val client: Client,
+    @Qualifier("callbackCircuitBreaker")
     private val callbackCircuitBreakerRegistry: CircuitBreakerRegistry,
     private val meterRegistry: MeterRegistry,
     private val projectPipelineCallBackUrlGenerator: ProjectPipelineCallBackUrlGenerator

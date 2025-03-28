@@ -35,10 +35,12 @@ import com.tencent.devops.log.meta.Ansi
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 
 @Suppress("LongParameterList", "TooManyFunctions")
 class BuildLogPrinter(
     private val client: Client,
+    @Qualifier("callbackCircuitBreaker")
     private val circuitBreakerRegistry: CircuitBreakerRegistry
 ) {
 

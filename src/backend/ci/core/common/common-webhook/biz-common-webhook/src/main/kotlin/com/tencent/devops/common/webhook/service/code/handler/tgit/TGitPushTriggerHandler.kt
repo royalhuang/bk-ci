@@ -83,6 +83,7 @@ import com.tencent.devops.scm.utils.code.git.GitUtils
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import java.util.Date
 
 @CodeWebhookHandler
@@ -92,6 +93,7 @@ class TGitPushTriggerHandler(
     private val gitScmService: GitScmService,
     // stream没有这个配置
     @Autowired(required = false)
+    @Qualifier("callbackCircuitBreaker")
     private val callbackCircuitBreakerRegistry: CircuitBreakerRegistry? = null
 ) : GitHookTriggerHandler<GitPushEvent> {
 
