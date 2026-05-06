@@ -1,4 +1,13 @@
 {{- if .Values.ingress.enabled }}
+{{/*
+ingress 路径处理：
+  - 当 .Values.config.bkCiPublicPath 为空字符串/未设置时，回退到 "/" 监听全部路径。
+  - 否则使用该值作为 Prefix 路径，并把同一路径下的 / 也作为入口（默认主页）。
+gateway 容器内会在 server 入口对 BK_CI_PUBLIC_PATH 做一次 rewrite 剥离，
+因此这里不需要 nginx-ingress 的 rewrite-target 注解；保持转发即可。
+*/}}
+{{- $publicPath := .Values.config.bkCiPublicPath | default "" -}}
+{{- $ingressPath := ternary "/" $publicPath (eq $publicPath "") -}}
 apiVersion: {{ include "common.capabilities.ingress.apiVersion" . }}
 kind: Ingress
 metadata:
@@ -19,7 +28,7 @@ spec:
     - host: {{ .Values.config.bkCiHost }}
       http:
         paths:
-          - path: /
+          - path: {{ $ingressPath }}
             {{- if eq "true" (include "common.ingress.supportsPathType" .) }}
             pathType: Prefix
             {{- end }}
