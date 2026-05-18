@@ -101,6 +101,23 @@ $ helm uninstall bkci
 | `ingress.enabled` | 是否创建ingress | `true` |
 | `annotations` | ingress标注 | Check `values.yaml` |
 
+### 子路径部署 (`bkCiPublicPath`) 与 bkrepo 网关取值
+
+`bkCiPublicPath` 默认空, 代表 BK-CI 占用域名根路径; 显式传入 (如 `--set config.bkCiPublicPath=/devops`) 即把整个 BK-CI 挂到该子路径下。
+ingress 的 path 会随之变化, 网关 nginx 入口会先剥离该前缀再走原有路由表, 前端 `window.PUBLIC_URL_PREFIX` / VueRouter base 也会取到该值, 因此静态资源、API、前端深层路由都会带上前缀。
+
+在 "外部网关 + 平级子路径" 拓扑下 (例如外部网关把 `/devops/*` 转到 BK-CI、`/bkrepo/*` 直接转到 bkrepo), 后端服务调用 bkrepo 时**不应该**走 BK-CI 自己的子路径; 否则会拼出 `https://<host>/devops/bkrepo/api/service/...` 这种由 BK-CI 网关二次代理的"双前缀"路径, 与外部网关的路由意图冲突。
+
+为此 `bkCiPrivateUrl` (BK-CI 自己的服务间入口) 与 `bkRepoPrivateUrl` (BkRepoClient 调 bkrepo 的入口) 已经解耦。常见取值组合:
+
+| 部署模式 | `bkCiPublicPath` | `bkCiPrivateUrl` | `bkRepoPrivateUrl` |
+|---|---|---|---|
+| 单机/根路径 (历史共享网关) | `""` | `""` (chart 默认填 `<release>-bk-ci-gateway`) | `""` (同上) |
+| 子路径部署 + 外部网关平级路由 | `/devops` | `https://<host>/devops` (带子路径, 给 BK-CI 自己用) | `https://<host>` (不带子路径, 让外部网关把 `/bkrepo` 直接路由到 bkrepo) |
+| 子路径部署 + 集群内直连 bkrepo (最快) | `/devops` | `<release>-bk-ci-gateway` (或留空) | `http://<bkrepo-cluster-svc>:port` |
+
+> `bkRepoFqdn` / `bkRepoHost` 必须是纯 host (或 host:port), 不能带 path; 否则 nginx proxy_pass / Host 头会变成非法值, bkrepo 直接 400。
+
 默认不会部署`nginx-ingress-controller`
 相关配置请参考[bitnami/nginx-ingress-controller](https://github.com/bitnami/charts/tree/master/bitnami/)
 
@@ -344,7 +361,9 @@ HPA设置
 | `bkPaasHttpsPort`  | paas端口 | `80` |
 | `bkPaasPrivateUrl`  | paas内部地址 | `""` |
 | `bkPaasPublicUrl`  | paas外部地址 | `""` |
+| `bkCiPublicPath`  | 站点子路径前缀；默认空(根路径)。设为 `/bkci`、`/devops` 等可把 BK-CI 整体挂到外部网关的某个子路径下 | `""` |
 | `bkRepoHost`  | 制品库地址 | `""` |
+| `bkRepoPrivateUrl`  | 后端服务调用 bkrepo 时拼接 `/bkrepo/api/...` 的网关入口。**与 `bkCiPrivateUrl` 解耦**：在 bkrepo 与 BK-CI 不共享网关、或挂在外部网关不同子路径下时必须独立配置（不要带 BK-CI 自己的子路径前缀） | 默认与 `bkCiPrivateUrl` 同 |
 | `bkSsmHost`  | 用户认证地址 | `""` |
 | `bkSsmPort`  | 用户认证端口 | `80` |
 | `bkCiNotifyWeworkSendChannel` | 通知渠道 | `weworkAgent` |

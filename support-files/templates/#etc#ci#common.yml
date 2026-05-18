@@ -426,6 +426,12 @@ bkrepo:
   staticRepoPrefixUrl: __BK_HTTP_SCHEMA__://__BK_REPO_HOST__/generic/{0}/{1}
   staticUserName: __BK_REPO_USERNAME__
   staticPassword: __BK_REPO_PASSWORD__
+  # 后端服务（BkRepoClient）调用 bkrepo 时使用的网关入口；BK-CI 拼上 /bkrepo/api/{service|build|user|external}/... 后访问。
+  # 取值场景：
+  #   1) 共享网关（历史模式）：保持等于 BK_CI_PRIVATE_URL，请求经 BK-CI 网关二次代理到 bkrepo；
+  #   2) 外部网关 + 平级子路径：取外部网关根域名（不带 BK-CI 自己的子路径前缀），让外部网关把 /bkrepo/* 直接路由到 bkrepo；
+  #   3) 集群内 service 直达：取 bkrepo 在 K8s 中的 service hostname，最快路径，不经过任何网关。
+  gatewayUrl: __BK_REPO_PRIVATE_URL__
 
 # 企业微信api配置
 wechatWork:

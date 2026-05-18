@@ -63,4 +63,17 @@ class BkRepoClientConfig {
 
     @Value("\${bkrepo.devxIdcBkrepoUrl:}")
     val bkRepoDevxIdcHost: String = ""
+
+    /**
+     * bkrepo 服务的网关入口 URL (BK_REPO_PRIVATE_URL)。
+     *
+     * BkRepoClient 拼接 `/bkrepo/api/{service|build|user|external}/...` 时使用。
+     *
+     * 与 [com.tencent.devops.common.service.config.CommonConfig.devopsIdcGateway] (BK_CI_PRIVATE_URL)
+     * 解耦后, 可单独配置, 避免在 "外部网关 + 子路径" 拓扑下把 BK-CI 自己的子路径前缀错误地拼到 bkrepo 调用上。
+     *
+     * 默认空, 此时 BkRepoClient 回退到 devopsIdcGateway, 与历史共享网关模型保持一致。
+     */
+    @Value("\${bkrepo.gatewayUrl:}")
+    val bkrepoGatewayUrl: String = ""
 }

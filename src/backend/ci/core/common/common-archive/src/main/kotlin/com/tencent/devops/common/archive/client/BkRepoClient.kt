@@ -126,8 +126,22 @@ class BkRepoClient constructor(
     private val commonConfig: CommonConfig,
     private val bkRepoClientConfig: BkRepoClientConfig
 ) {
+    /**
+     * 返回拼接 bkrepo 各类 API 路径 (/bkrepo/api/...) 时使用的网关基础 URL。
+     *
+     * - 若显式配置了 bkrepo.gatewayUrl (来源 BK_REPO_PRIVATE_URL), 优先使用之: 适用于
+     *   "外部网关 + 平级子路径" 或 "集群内 service 直达 bkrepo" 等拓扑;
+     * - 否则回退到 devopsIdcGateway (BK_CI_PRIVATE_URL), 保留共享网关历史行为, 不影响存量部署。
+     *
+     * 注意: 不要把 BK-CI 自己的子路径前缀 (如 /devops) 拼进来——bkrepo 不一定挂在 BK-CI 的子路径下。
+     */
     private fun getGatewayUrl(): String {
-        return HomeHostUtil.getHost(commonConfig.devopsIdcGateway!!)
+        val bkrepoGatewayUrl = bkRepoClientConfig.bkrepoGatewayUrl
+        return if (bkrepoGatewayUrl.isNotBlank()) {
+            HomeHostUtil.getHost(bkrepoGatewayUrl)
+        } else {
+            HomeHostUtil.getHost(commonConfig.devopsIdcGateway!!)
+        }
     }
 
     fun getRkRepoIdcHost(): String {
