@@ -726,13 +726,16 @@ class PipelineInfoFacadeService @Autowired constructor(
                     watcher.stop()
                 }
 
-                // 添加标签
-                if (versionStatus == VersionStatus.RELEASED) pipelineGroupService.addPipelineLabel(
-                    userId = userId,
-                    projectId = projectId,
-                    pipelineId = pipelineId,
-                    labelIds = model.labels
-                )
+                // 新建时写入标签。已发布版本，以及仅草稿的新建（复制为草稿）都要带上。
+                // 草稿更新不走创建，避免未发布的改动覆盖已发布标签。
+                if (versionStatus == VersionStatus.RELEASED || versionStatus == VersionStatus.COMMITTING) {
+                    pipelineGroupService.addPipelineLabel(
+                        userId = userId,
+                        projectId = projectId,
+                        pipelineId = pipelineId,
+                        labelIds = model.labels
+                    )
+                }
 
                 // 添加到静态分组
                 val bulkAdd = PipelineViewBulkAdd(pipelineIds = listOf(pipelineId), viewIds = model.staticViews)
@@ -1111,7 +1114,7 @@ class PipelineInfoFacadeService @Autowired constructor(
                 errorCode = ProcessMessageCode.ERROR_PIPELINE_NOT_EXISTS
             )
 
-        logger.info("Start to copy the pipeline $pipelineId")
+        logger.info("Start to copy the pipeline $pipelineId|copyAsDraft=${pipelineCopy.copyAsDraft}")
         if (checkPermission) {
             val permission = AuthPermission.EDIT
             pipelinePermissionService.validPipelinePermission(
@@ -1181,6 +1184,13 @@ class PipelineInfoFacadeService @Autowired constructor(
             )
             modelCheckPlugin.clearUpModel(copyMode)
             val settingInfo = pipelineSettingFacadeService.getSettingInfo(projectId, pipelineId)
+            // 不传 copyAsDraft 时直接发布。为 true 时只落草稿：触发器编排会带上，
+            // 但定时注册和代码库 Webhook 要等发布（isReleasing）才生效，开放接口启动也会被拒绝。
+            val versionStatus = if (pipelineCopy.copyAsDraft) {
+                VersionStatus.COMMITTING
+            } else {
+                VersionStatus.RELEASED
+            }
             val newPipelineId = createPipeline(
                 userId = userId,
                 projectId = projectId,
@@ -1188,7 +1198,8 @@ class PipelineInfoFacadeService @Autowired constructor(
                 channelCode = channelCode,
                 setting = settingInfo?.copy(
                     labels = pipelineCopy.labels
-                )
+                ),
+                versionStatus = versionStatus
             ).pipelineId
             return newPipelineId
         } catch (e: JsonParseException) {

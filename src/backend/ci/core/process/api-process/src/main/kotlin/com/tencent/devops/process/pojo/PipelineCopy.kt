@@ -41,5 +41,12 @@ data class PipelineCopy(
     @get:Schema(title = "流水线基础设置-基本信息中的标签", required = false)
     var labels: List<String> = emptyList(),
     @get:Schema(title = "配置静态流水线组，需要填写视图ID", required = false)
-    var staticViews: List<String> = emptyList()
+    var staticViews: List<String> = emptyList(),
+    @get:Schema(
+        title = "是否复制为草稿",
+        description = "为 true 时副本只有草稿，发布前不会运行，定时和代码库事件不生效。" +
+            "不传或为 false 时直接发布。页面默认复制为草稿，开放接口不传则直接发布。",
+        required = false
+    )
+    val copyAsDraft: Boolean = false
 )
